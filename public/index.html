@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portail Public — Incubateur Digital Solidaire (IDS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    body {
+      background: radial-gradient(circle at 15% 20%, #08284d 0%, #021224 50%, #010a14 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    .container {
+      max-width: 680px;
+      width: 100%;
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      border-radius: 9999px;
+      color: #34d399;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ffffff 30%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.lead {
+      color: #94a3b8;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+    @media (max-width: 600px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 26px; }
+    }
+    .card {
+      background: rgba(15, 30, 52, 0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 28px 22px;
+      text-decoration: none;
+      color: white;
+      text-align: left;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: transparent;
+      transition: background 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5);
+    }
+    .card.blue:hover::before { background: linear-gradient(90deg, #38bdf8, #3b82f6); }
+    .card.emerald:hover::before { background: linear-gradient(90deg, #34d399, #10b981); }
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 16px;
+    }
+    .card.blue .card-icon {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+    }
+    .card.emerald .card-icon {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+    .card-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .card.emerald .card-action { color: #34d399; }
+    .footer {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">
+      <div class="pulse-dot"></div>
+      Relais Cloud Public 24h/24 Actif
+    </div>
+
+    <h1>Incubateur Digital Solidaire</h1>
+    <p class="lead">
+      Portail public de réservation des espaces d'innovation et d'émargement numérique des ateliers. Scannez un QR Code ou choisissez une option ci-dessous :
+    </p>
+
+    <div class="cards-grid">
+      <a href="/booking" class="card blue">
+        <div class="card-icon">📅</div>
+        <div class="card-title">Réserver un Espace</div>
+        <div class="card-desc">
+          FabLab, Coworking, Studio Média, Salle Réunion ou Formation. Réservez votre créneau en temps réel.
+        </div>
+        <div class="card-action">
+          Accéder au formulaire &rarr;
+        </div>
+      </a>
+
+      <a href="/emargement" class="card emerald">
+        <div class="card-icon">✍️</div>
+        <div class="card-title">Émargement Atelier</div>
+        <div class="card-desc">
+          Feuille de présence numérique pour les porteurs de projets et participants aux formations du jour.
+        </div>
+        <div class="card-action">
+          Signer ma présence &rarr;
+        </div>
+      </a>
+    </div>
+
+    <div class="footer">
+      Système Hybride IDS — Données sécurisées et synchronisées avec le centre local.
+    </div>
+  </div>
+</body>
+</html>

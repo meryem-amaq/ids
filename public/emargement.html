@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Émargement Atelier — IDS Incubateur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    body {
+      background: radial-gradient(circle at 10% 20%, #062b2b 0%, #02161f 50%, #010a0e 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px 16px;
+    }
+    .wrapper {
+      max-width: 540px;
+      width: 100%;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .brand-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 9999px;
+      color: #34d399;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #ffffff 40%, #a7f3d0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+    .card-box {
+      background: rgba(8, 26, 31, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 26px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+    @media (max-width: 480px) {
+      .card-box { padding: 20px 16px; }
+      h1 { font-size: 20px; }
+    }
+    /* Atelier Info Banner */
+    .event-banner {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .event-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .event-meta {
+      font-size: 12px;
+      color: #94a3b8;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      width: 100%;
+      justify-content: center;
+    }
+    .status-open {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .status-waiting {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fbbf24;
+    }
+    .status-closed {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+    .row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .row-2 { grid-template-columns: 1fr; }
+    }
+    input[type="text"] {
+      width: 100%;
+      background: rgba(2, 14, 18, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: #f8fafc;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    input:focus {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.4);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 15px 30px -5px rgba(5, 150, 105, 0.5);
+    }
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .alert-box {
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      margin-top: 14px;
+      display: none;
+    }
+    .alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    /* Success View */
+    .success-view {
+      display: none;
+      text-align: center;
+      padding: 20px 10px;
+    }
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.2);
+      border: 2px solid #10b981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 16px auto;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+    }
+    .success-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #34d399;
+      margin-bottom: 6px;
+    }
+    .success-desc {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .receipt-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: left;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+    .receipt-row:last-child { border-bottom: none; }
+    .receipt-label { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="brand-tag">✍️ Émargement Numérique</div>
+      <h1>Feuille de Présence</h1>
+      <p class="subtitle">Validez votre présence à l'atelier de formation IDS</p>
+    </div>
+
+    <div class="card-box">
+      <!-- DÉTAILS DE L'ATELIER -->
+      <div class="event-banner">
+        <div class="event-title" id="eventTitle">Chargement de l'atelier...</div>
+        <div class="event-meta" id="eventMeta">
+          <span>📅 <span id="eventDate">--</span></span>
+          <span>⏱️ <span id="eventHours">--</span></span>
+          <span>👨‍🏫 <span id="eventTrainer">--</span></span>
+        </div>
+      </div>
+
+      <!-- BADGE D'ÉTAT OUVERT / CLÔTURÉ -->
+      <div id="statusBadge" class="status-badge status-waiting">
+        <div class="pulse-dot"></div>
+        <span id="statusText">Vérification de la session...</span>
+      </div>
+
+      <!-- FORMULAIRE -->
+      <form id="emargementForm">
+        <div class="row-2">
+          <div class="form-group">
+            <label for="nom">Nom de famille *</label>
+            <input type="text" id="nom" name="nom" placeholder="Ex: Bennani" required>
+          </div>
+          <div class="form-group">
+            <label for="prenom">Prénom *</label>
+            <input type="text" id="prenom" name="prenom" placeholder="Ex: Youssef" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="ppNumero">N° Porteur de Projet / Identifiant (Optionnel)</label>
+          <input type="text" id="ppNumero" name="ppNumero" placeholder="Ex: PP-042 ou incubé">
+        </div>
+
+        <div id="errorAlert" class="alert-box alert-error"></div>
+
+        <button type="submit" id="submitBtn" class="btn-submit">
+          <span>✓ Confirmer et Valider ma Présence</span>
+        </button>
+      </form>
+
+      <!-- VUE SUCCÈS -->
+      <div id="successView" class="success-view">
+        <div class="success-icon">✓</div>
+        <h2 class="success-title">Présence Validée !</h2>
+        <p class="success-desc">
+          Votre émargement a été horodaté et enregistré avec succès. Il sera synchronisé avec le registre officiel du centre.
+        </p>
+
+        <div class="receipt-box" id="receiptBox"></div>
+
+        <p style="font-size: 12px; color: #64748b;">
+          Merci de votre participation à la formation IDS.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Extraction des paramètres
+    const urlParams = new URLSearchParams(window.location.search);
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const lastPart = pathParts[pathParts.length - 1];
+
+    let atelierId = urlParams.get('atelier') || urlParams.get('id');
+    if (!atelierId && lastPart && !['emargement', 'presence'].includes(lastPart)) {
+      atelierId = lastPart;
+    }
+    if (!atelierId) atelierId = '1';
+
+    // Valeurs par défaut depuis les paramètres d'URL (pour affichage immédiat)
+    let atelierData = {
+      id: atelierId,
+      titre: urlParams.get('nom_atelier') || 'Atelier de Formation IDS',
+      date: urlParams.get('date') || new Date().toISOString().split('T')[0],
+      heureDebut: urlParams.get('heureDebut') || '09:30',
+      heureFin: urlParams.get('heureFin') || '12:30',
+      duree: urlParams.get('duree') || '3h00',
+      formateur: urlParams.get('formateur') || 'Formateur IDS',
+      statutOuverture: 'auto'
+    };
+
+    function renderAtelierInfo() {
+      document.getElementById('eventTitle').textContent = atelierData.titre;
+      document.getElementById('eventDate').textContent = atelierData.date;
+      document.getElementById('eventHours').textContent = `${atelierData.heureDebut} - ${atelierData.heureFin} (${atelierData.duree})`;
+      document.getElementById('eventTrainer').textContent = atelierData.formateur;
+    }
+    renderAtelierInfo();
+
+    // Vérification de la fenêtre d'émargement
+    function checkAttendanceWindow() {
+      const statusBadge = document.getElementById('statusBadge');
+      const statusText = document.getElementById('statusText');
+      const submitBtn = document.getElementById('submitBtn');
+
+      const statut = atelierData.statutOuverture || atelierData.statut_ouverture || 'auto';
+
+      if (statut === 'ouvert_force') {
+        statusBadge.className = 'status-badge status-open';
+        statusText.textContent = 'ÉMARGEMENT OUVERT (Validé par l\'administration)';
+        submitBtn.disabled = false;
+        return true;
+      }
+      if (statut === 'cloture') {
+        statusBadge.className = 'status-badge status-closed';
+        statusText.textContent = 'SESSION CLÔTURÉE — Émargement fermé';
+        submitBtn.disabled = true;
+        return false;
+      }
+
+      // Mode auto
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      if (atelierData.date && atelierData.date !== todayStr) {
+        if (atelierData.date > todayStr) {
+          statusBadge.className = 'status-badge status-waiting';
+          statusText.textContent = `À VENIR — Ouverture le ${atelierData.date}`;
+        } else {
+          statusBadge.className = 'status-badge status-closed';
+          statusText.textContent = `CLÔTURÉ — Atelier passé (${atelierData.date})`;
+        }
+        submitBtn.disabled = true;
+        return false;
+      }
+
+      const [sh, sm] = (atelierData.heureDebut || '09:30').split(':').map(Number);
+      const [eh, em] = (atelierData.heureFin || '12:30').split(':').map(Number);
+      const curM = now.getHours() * 60 + now.getMinutes();
+      const startM = (sh * 60 + sm) - 15;
+      const endM = (eh * 60 + em) + 30;
+
+      if (curM < startM) {
+        statusBadge.className = 'status-badge status-waiting';
+        statusText.textContent = `OUVERTURE PROCHAINE (15 min avant ${atelierData.heureDebut})`;
+        submitBtn.disabled = true;
+        return false;
+      }
+      if (curM > endM) {
+        statusBadge.className = 'status-badge status-closed';
+        statusText.textContent = 'SESSION TERMINÉE — Émargement clos';
+        submitBtn.disabled = true;
+        return false;
+      }
+
+      statusBadge.className = 'status-badge status-open';
+      statusText.textContent = 'SESSION EN COURS — Émargement Ouvert';
+      submitBtn.disabled = false;
+      return true;
+    }
+
+    checkAttendanceWindow();
+
+    // Charger les informations fraîches depuis le serveur
+    fetch(`/api/events/${atelierId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(ev => {
+        if (ev) {
+          atelierData = {
+            id: ev.id,
+            titre: ev.titre || atelierData.titre,
+            date: ev.date || atelierData.date,
+            heureDebut: ev.heure_debut || ev.heureDebut || atelierData.heureDebut,
+            heureFin: ev.heure_fin || ev.heureFin || atelierData.heureFin,
+            duree: ev.duree || atelierData.duree,
+            formateur: ev.formateur || atelierData.formateur,
+            statutOuverture: ev.statut_ouverture || ev.statutOuverture || 'auto'
+          };
+          renderAtelierInfo();
+          checkAttendanceWindow();
+        }
+      })
+      .catch(() => {});
+
+    // Vérifier si l'incubé a déjà signé sur cet appareil pour cet atelier
+    const savedSignature = localStorage.getItem(`presence_signed_${atelierId}`);
+    if (savedSignature) {
+      try {
+        const parsed = JSON.parse(savedSignature);
+        document.getElementById('emargementForm').style.display = 'none';
+        const successView = document.getElementById('successView');
+        successView.style.display = 'block';
+        document.querySelector('.success-title').textContent = 'Déjà Émargé !';
+        document.querySelector('.success-desc').textContent = 'Vous avez déjà validé votre présence pour cet atelier sur cet appareil.';
+        document.getElementById('receiptBox').innerHTML = `
+          <div class="receipt-row"><span class="receipt-label">Participant :</span><span>${parsed.nom} ${parsed.prenom}</span></div>
+          <div class="receipt-row"><span class="receipt-label">Heure :</span><span>${parsed.time}</span></div>
+          <div class="receipt-row"><span class="receipt-label">Atelier :</span><span>${atelierData.titre}</span></div>
+        `;
+      } catch (e) {}
+    }
+
+    // Gestion du formulaire
+    const form = document.getElementById('emargementForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorAlert = document.getElementById('errorAlert');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorAlert.style.display = 'none';
+
+      const nom = document.getElementById('nom').value.trim();
+      const prenom = document.getElementById('prenom').value.trim();
+      const ppNumero = document.getElementById('ppNumero').value.trim();
+      const timeNow = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Validation en cours...</span>';
+
+      try {
+        const res = await fetch('/api/presences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            atelierId: String(atelierId),
+            nom,
+            prenom,
+            ppNumero,
+            time: timeNow
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || 'Erreur lors de la validation de la présence');
+        }
+
+        // Sauvegarde locale pour éviter double signature
+        localStorage.setItem(`presence_signed_${atelierId}`, JSON.stringify({
+          nom, prenom, time: timeNow, date: atelierData.date
+        }));
+
+        form.style.display = 'none';
+        const successView = document.getElementById('successView');
+        successView.style.display = 'block';
+
+        document.getElementById('receiptBox').innerHTML = `
+          <div class="receipt-row"><span class="receipt-label">Participant :</span><span>${nom} ${prenom}</span></div>
+          <div class="receipt-row"><span class="receipt-label">Heure de pointage :</span><span>${timeNow}</span></div>
+          <div class="receipt-row"><span class="receipt-label">Atelier :</span><span>${atelierData.titre}</span></div>
+          ${ppNumero ? `<div class="receipt-row"><span class="receipt-label">Identifiant :</span><span>${ppNumero}</span></div>` : ''}
+        `;
+      } catch (err) {
+        errorAlert.textContent = err.message || 'Impossible d\'enregistrer la présence';
+        errorAlert.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>✓ Confirmer et Valider ma Présence</span>';
+      }
+    });
+  </script>
+</body>
+</html>
