@@ -35,13 +35,26 @@ app.get('/health', (req, res) => {
 // 1. Réception d'une demande de réservation (Fablab / Studio)
 app.post('/api/reservations/demande', async (req, res) => {
     try {
-        const { espace, salle, nomComplet, telephone, email, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises } = req.body;
+        const { espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises } = req.body;
         
+        // Vérification de la liste blanche
+        const [authRows] = await pool.query(
+            'SELECT email FROM cloud_porteurs_autorises WHERE email = ? OR pp_numero = ?',
+            [email, numero_pp || '']
+        );
+
+        if (authRows.length === 0) {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Accès refusé : Cet email ou N° Porteur de Projet n'est pas reconnu dans notre système." 
+            });
+        }
+
         const [result] = await pool.query(
             `INSERT INTO cloud_reservations 
-            (espace, salle, nomComplet, telephone, email, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [espace, salle, nomComplet, telephone, email, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises]
+            (espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [espace, salle, nomComplet, telephone, email, numero_pp || null, dateReservation, heureDebut, heureFin, dureeMinutes || 120, motif, equipementsUtilises]
         );
         
         res.status(201).json({ success: true, message: "Réservation enregistrée sur le cloud", id: result.insertId });
@@ -101,6 +114,39 @@ app.get('/api/reservations', async (req, res) => {
 app.get('/api/equipements-espaces', (req, res) => {
     res.json({}); 
 });
+
+// 5. API de synchronisation de la liste blanche (Appelée par le serveur local)
+app.post('/api/sync/whitelist', async (req, res) => {
+    try {
+        const { secret, porteurs } = req.body;
+        
+        // Sécurité basique : on s'assure que c'est le serveur local qui appelle
+        if (secret !== 'MON_SECRET_DE_SYNC_123') {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        if (!Array.isArray(porteurs)) {
+            return res.status(400).json({ success: false, message: "Format invalide" });
+        }
+
+        // On vide la table et on la remplit
+        await pool.query('TRUNCATE TABLE cloud_porteurs_autorises');
+        
+        if (porteurs.length > 0) {
+            const values = porteurs.map(p => [p.email, p.pp_numero]);
+            await pool.query(
+                'INSERT INTO cloud_porteurs_autorises (email, pp_numero) VALUES ?',
+                [values]
+            );
+        }
+
+        res.json({ success: true, message: `Liste blanche synchronisée avec ${porteurs.length} porteurs.` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Erreur serveur cloud" });
+    }
+});
+
 
 // -------------------------------------------------------------
 // DEPLOIEMENT DU FRONTEND REACT

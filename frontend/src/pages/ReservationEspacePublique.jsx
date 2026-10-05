@@ -118,6 +118,7 @@ export default function ReservationEspacePublique() {
     return {
       nomComplet: '',
       email: '',
+      numero_pp: '',
       telephone: '',
       dateReservation: new Date().toISOString().split('T')[0],
       heureDebut: slots[0]?.debut || '08:00',
@@ -327,6 +328,7 @@ export default function ReservationEspacePublique() {
           salleSpecifique: selectedSousSalle || null,
           nomComplet: form.nomComplet.trim(),
           email: form.email.trim(),
+          numero_pp: form.numero_pp.trim(),
           telephone: form.telephone.trim(),
           dateReservation: form.dateReservation,
           heureDebut: form.heureDebut,
@@ -438,19 +440,20 @@ export default function ReservationEspacePublique() {
 
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Téléphone
+                N° Porteur de Projet *
               </label>
               <input
-                type="tel"
-                placeholder="06 XX XX XX XX"
-                value={form.telephone}
-                onChange={e => setForm({ ...form, telephone: e.target.value })}
+                type="text"
+                required
+                placeholder="Ex: PP-2026-001"
+                value={form.numero_pp}
+                onChange={e => setForm({ ...form, numero_pp: e.target.value })}
                 className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
               />
             </div>
           </div>
 
-          {/* LIGNE 2 : EMAIL & SALLE EN PARALLÈLE */}
+          {/* LIGNE 2 : EMAIL & TÉLÉPHONE EN PARALLÈLE */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
@@ -466,6 +469,22 @@ export default function ReservationEspacePublique() {
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1">
+                Téléphone
+              </label>
+              <input
+                type="tel"
+                placeholder="06 XX XX XX XX"
+                value={form.telephone}
+                onChange={e => setForm({ ...form, telephone: e.target.value })}
+                className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* LIGNE 2b : SALLE UNIQUE (100% width) */}
+          <div className="grid grid-cols-1 gap-3.5 pt-2">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
                 Salle / Atelier exact *

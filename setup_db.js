@@ -15,6 +15,7 @@ async function setupDatabase() {
                 nomComplet VARCHAR(150) NOT NULL,
                 telephone VARCHAR(50),
                 email VARCHAR(150),
+                numero_pp VARCHAR(50),
                 dateReservation DATE NOT NULL,
                 heureDebut VARCHAR(10) NOT NULL,
                 heureFin VARCHAR(10) NOT NULL,
@@ -23,6 +24,14 @@ async function setupDatabase() {
                 equipementsUtilises TEXT,
                 dateCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 sync_status ENUM('pending', 'synced') DEFAULT 'pending'
+            );
+        `);
+
+        console.log("Création de la table cloud_porteurs_autorises...");
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cloud_porteurs_autorises (
+                email VARCHAR(150) PRIMARY KEY,
+                pp_numero VARCHAR(50)
             );
         `);
 
