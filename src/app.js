@@ -50,6 +50,49 @@ app.post('/api/reservations/demande', async (req, res) => {
             });
         }
 
+        const emailAuth = email || '';
+        const ppAuth = numero_pp || '';
+
+        // --- NOUVELLES REGLES DE LIMITATION ---
+        
+        // 1. Studio : Max 1 fois par semaine
+        if (espace === 'studio') {
+            const [studioRows] = await pool.query(
+                `SELECT COUNT(*) as total 
+                 FROM cloud_reservations 
+                 WHERE (email = ? OR (numero_pp != '' AND numero_pp = ?))
+                 AND espace = 'studio' 
+                 AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
+                [emailAuth, ppAuth, dateReservation]
+            );
+            if (studioRows[0].total >= 1) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Limite atteinte : Vous avez déjà réservé le Studio cette semaine (maximum 1 fois par semaine)."
+                });
+            }
+        }
+
+        // 2. Salles : Max 10h par semaine (600 minutes)
+        const dureeResa = dureeMinutes || 120; // par défaut 2h = 120 min
+        if (espace === 'salle_reunion') {
+            const [salleRows] = await pool.query(
+                `SELECT SUM(dureeMinutes) as total_minutes 
+                 FROM cloud_reservations 
+                 WHERE (email = ? OR (numero_pp != '' AND numero_pp = ?))
+                 AND espace = 'salle_reunion' 
+                 AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
+                [emailAuth, ppAuth, dateReservation]
+            );
+            const totalPrecedent = salleRows[0].total_minutes || 0;
+            if (totalPrecedent + dureeResa > 600) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Limite atteinte : Vous avez déjà réservé ${totalPrecedent / 60}h de salles cette semaine (maximum 10h par semaine).`
+                });
+            }
+        }
+
         const [result] = await pool.query(
             `INSERT INTO cloud_reservations 
             (espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises) 

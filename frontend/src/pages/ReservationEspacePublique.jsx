@@ -57,10 +57,8 @@ const CRENEAUX_PAR_ESPACE = {
     { debut: '15:00', fin: '16:00', label: '15h - 16h' },
   ],
   studio: [
-    { debut: '08:00', fin: '10:00', label: '08h - 10h' },
-    { debut: '10:00', fin: '12:00', label: '10h - 12h' },
-    { debut: '12:00', fin: '14:00', label: '12h - 14h' },
-    { debut: '14:00', fin: '16:00', label: '14h - 16h' },
+    { debut: '09:00', fin: '13:00', label: '09h - 13h' },
+    { debut: '13:00', fin: '17:00', label: '13h - 17h' },
   ],
   salle_reunion: [
     { debut: '08:00', fin: '10:00', label: '08h - 10h' },
@@ -74,7 +72,7 @@ const CRENEAUX_PAR_ESPACE = {
 
 const DUREE_PAR_ESPACE = {
   fablab: '1h',
-  studio: '2h',
+  studio: '4h',
   salle_reunion: '2h'
 };
 
