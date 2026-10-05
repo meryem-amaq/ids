@@ -67,6 +67,7 @@ const CRENEAUX_PAR_ESPACE = {
     { debut: '14:00', fin: '16:00', label: '14h - 16h' },
     { debut: '16:00', fin: '18:00', label: '16h - 18h' },
     { debut: '18:00', fin: '20:00', label: '18h - 20h' },
+    { debut: '20:00', fin: '22:00', label: '20h - 22h' },
   ]
 };
 
@@ -89,7 +90,7 @@ export default function ReservationEspacePublique() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const sousSallesList = SOUS_SALLES[espaceKey] || [];
-  
+
   const initialSousSalle = (() => {
     const fromUrl = searchParams.get('salle');
     if (fromUrl && sousSallesList.some(s => s.id.toLowerCase() === fromUrl.toLowerCase())) {
@@ -161,7 +162,7 @@ export default function ReservationEspacePublique() {
           setDbEquipements(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Gestion du matériel disponible selon espace et sous-salle
@@ -189,7 +190,7 @@ export default function ReservationEspacePublique() {
   const toggleEquipement = (eqItem) => {
     const eqName = typeof eqItem === 'string' ? eqItem : eqItem.nom;
     const eqObj = typeof eqItem === 'object' ? eqItem : equipementsDisponibles.find(i => i.nom === eqName);
-    
+
     // Vérifier si la machine est hors-service
     if (eqObj?.etatAvant === 'En maintenance / Bloqué' || eqObj?.incidents?.some(inc => !inc.resolu && inc.gravite === 'bloquant')) {
       toast.error(`"${eqName}" est actuellement en maintenance ou en réparation et ne peut pas être réservé.`, { icon: '⚠️' });
@@ -205,7 +206,7 @@ export default function ReservationEspacePublique() {
       } else {
         // Détecter si un matériel de la même catégorie / famille est déjà sélectionné
         const groupeId = eqObj?.typeGroupe || eqObj?.categorie;
-        const sameGroupEquipments = equipementsDisponibles.filter(i => 
+        const sameGroupEquipments = equipementsDisponibles.filter(i =>
           (eqObj?.typeGroupe && i.typeGroupe === eqObj.typeGroupe) ||
           (!eqObj?.typeGroupe && eqObj?.categorie && i.categorie === eqObj.categorie)
         ).map(i => i.nom);
@@ -419,7 +420,7 @@ export default function ReservationEspacePublique() {
 
         {/* FORMULAIRE DE RÉSERVATION PRINCIPAL COMPACT & PARALLÈLE */}
         <form onSubmit={handleSubmit} className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl backdrop-blur-sm">
-          
+
           {/* LIGNE 1 : NOM & TÉLÉPHONE EN PARALLÈLE */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
@@ -539,11 +540,10 @@ export default function ReservationEspacePublique() {
                     toast.error(`Le ${new Date(newDate).toLocaleDateString('fr-FR')} est un jour férié (${ferie.nom}). L'établissement est fermé.`);
                   }
                 }}
-                className={`w-full border text-xs rounded-xl px-3.5 py-2.5 outline-none cursor-pointer font-mono transition-colors ${
-                  jourFerieInfo.isFerie
-                    ? 'bg-red-500/10 border-red-500/50 text-red-300 focus:border-red-500'
-                    : 'bg-slate-800/80 border border-slate-700 text-white focus:border-amber-500'
-                }`}
+                className={`w-full border text-xs rounded-xl px-3.5 py-2.5 outline-none cursor-pointer font-mono transition-colors ${jourFerieInfo.isFerie
+                  ? 'bg-red-500/10 border-red-500/50 text-red-300 focus:border-red-500'
+                  : 'bg-slate-800/80 border border-slate-700 text-white focus:border-amber-500'
+                  }`}
               />
             </div>
 
@@ -560,11 +560,10 @@ export default function ReservationEspacePublique() {
                     const [deb, fin] = e.target.value.split('-');
                     setForm(prev => ({ ...prev, heureDebut: deb, heureFin: fin }));
                   }}
-                  className={`w-full border text-xs rounded-xl px-3.5 pr-8 py-2.5 outline-none font-bold font-mono transition-colors ${
-                    jourFerieInfo.isFerie
-                      ? 'bg-red-500/10 border-red-500/40 text-red-400 cursor-not-allowed appearance-none'
-                      : 'bg-slate-800/80 border-slate-700 text-white focus:border-amber-500 cursor-pointer appearance-none'
-                  }`}
+                  className={`w-full border text-xs rounded-xl px-3.5 pr-8 py-2.5 outline-none font-bold font-mono transition-colors ${jourFerieInfo.isFerie
+                    ? 'bg-red-500/10 border-red-500/40 text-red-400 cursor-not-allowed appearance-none'
+                    : 'bg-slate-800/80 border-slate-700 text-white focus:border-amber-500 cursor-pointer appearance-none'
+                    }`}
                 >
                   {jourFerieInfo.isFerie ? (
                     <option value="" disabled className="bg-slate-900 text-red-400 font-sans">
@@ -627,9 +626,8 @@ export default function ReservationEspacePublique() {
               <div className="relative">
                 <div
                   onClick={() => setIsMaterielListOpen(!isMaterielListOpen)}
-                  className={`w-full p-2.5 rounded-xl bg-slate-800/80 border cursor-pointer flex items-center justify-between gap-2 transition-all select-none ${
-                    isMaterielListOpen ? 'border-amber-500 shadow-md' : 'border-slate-700 hover:border-slate-600'
-                  }`}
+                  className={`w-full p-2.5 rounded-xl bg-slate-800/80 border cursor-pointer flex items-center justify-between gap-2 transition-all select-none ${isMaterielListOpen ? 'border-amber-500 shadow-md' : 'border-slate-700 hover:border-slate-600'
+                    }`}
                 >
                   <div className="flex items-center gap-2 truncate min-w-0">
                     <span className="text-xs text-slate-300 truncate">
@@ -658,7 +656,7 @@ export default function ReservationEspacePublique() {
                     {equipementsDisponibles.map(eq => {
                       const isSelected = selectedEquipements.includes(eq.nom);
                       const isMaintenance = eq.etatAvant === 'En maintenance / Bloqué' || eq.incidents?.some(inc => !inc.resolu && inc.gravite === 'bloquant');
-                      
+
                       // Détecter si un autre équipement du même groupe est sélectionné
                       const isAnotherInGroupSelected = !isSelected && selectedEquipements.some(selNom => {
                         const selObj = equipementsDisponibles.find(i => i.nom === selNom);
@@ -672,24 +670,22 @@ export default function ReservationEspacePublique() {
                         <div
                           key={eq.id || eq.nom}
                           onClick={() => !isMaintenance && toggleEquipement(eq)}
-                          className={`p-2 rounded-xl border transition-all flex items-center justify-between gap-2 select-none ${
-                            isMaintenance
-                              ? 'opacity-50 cursor-not-allowed bg-red-950/20 border-red-900/40 text-slate-500'
-                              : isSelected
+                          className={`p-2 rounded-xl border transition-all flex items-center justify-between gap-2 select-none ${isMaintenance
+                            ? 'opacity-50 cursor-not-allowed bg-red-950/20 border-red-900/40 text-slate-500'
+                            : isSelected
                               ? 'bg-amber-500/20 border-amber-500 text-white shadow-sm cursor-pointer'
                               : isAnotherInGroupSelected
-                              ? 'bg-slate-800/40 hover:bg-slate-800 border-dashed border-slate-700 text-slate-400 cursor-pointer'
-                              : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60 text-slate-300 cursor-pointer'
-                          }`}
+                                ? 'bg-slate-800/40 hover:bg-slate-800 border-dashed border-slate-700 text-slate-400 cursor-pointer'
+                                : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60 text-slate-300 cursor-pointer'
+                            }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 font-black transition-colors ${
-                              isMaintenance
-                                ? 'bg-red-500/30 text-red-400 border border-red-500/40'
-                                : isSelected 
-                                ? 'bg-amber-500 text-navy-950' 
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 font-black transition-colors ${isMaintenance
+                              ? 'bg-red-500/30 text-red-400 border border-red-500/40'
+                              : isSelected
+                                ? 'bg-amber-500 text-navy-950'
                                 : 'border border-slate-600 bg-slate-700/40 text-transparent'
-                            }`}>
+                              }`}>
                               {isMaintenance ? '✕' : '✓'}
                             </div>
                             <div className="truncate">
@@ -699,7 +695,7 @@ export default function ReservationEspacePublique() {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isMaintenance ? (
                               <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/40">
@@ -780,11 +776,10 @@ export default function ReservationEspacePublique() {
           <button
             type="submit"
             disabled={loading || jourFerieInfo.isFerie || isSlotBooked(form.heureDebut, form.heureFin)}
-            className={`w-full py-3.5 font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
-              jourFerieInfo.isFerie || isSlotBooked(form.heureDebut, form.heureFin)
-                ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-70 shadow-none'
-                : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-navy-950 shadow-amber-500/20'
-            }`}
+            className={`w-full py-3.5 font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${jourFerieInfo.isFerie || isSlotBooked(form.heureDebut, form.heureFin)
+              ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-70 shadow-none'
+              : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-navy-950 shadow-amber-500/20'
+              }`}
           >
             {jourFerieInfo.isFerie ? (
               <span>Fermé — Jour férié ({jourFerieInfo.nom})</span>
