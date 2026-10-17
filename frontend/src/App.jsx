@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Presence from './pages/Presence';
+import PresenceFormation from './pages/PresenceFormation';
 import ReservationEspacePublique from './pages/ReservationEspacePublique';
 import PortalIndex from './pages/PortalIndex';
 
@@ -9,6 +10,8 @@ function App() {
       <Routes>
         <Route path="/presence/:id" element={<Presence />} />
         <Route path="/emargement/:id" element={<Presence />} />
+        <Route path="/formation" element={<PresenceFormation />} />
+        <Route path="/formation/:id" element={<PresenceFormation />} />
         <Route path="/reserver-espace/:espace" element={<ReservationEspacePublique />} />
         <Route path="/booking/:espace" element={<ReservationEspacePublique />} />
         

@@ -49,18 +49,19 @@ export default function PortalIndex() {
 
           {/* Emargement Card */}
           <div 
-            className="group relative bg-[#0a2040]/80 backdrop-blur-xl border border-slate-700/50 hover:border-emerald-500/50 rounded-3xl p-8 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1 fade-in slide-up opacity-50"
+            onClick={() => navigate('/formation')}
+            className="group relative bg-[#0a2040]/80 backdrop-blur-xl border border-slate-700/50 hover:border-emerald-500/50 rounded-3xl p-8 cursor-pointer transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1 fade-in slide-up"
             style={{ animationDelay: '0.3s' }}
           >
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center mb-6 text-emerald-400 text-2xl shadow-inner group-hover:scale-110 transition-transform duration-300">
               ✍️
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3">Émargement Atelier</h2>
+            <h2 className="text-2xl font-bold text-white mb-3">Émargement Formation</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-8">
-              Feuille de présence numérique pour les porteurs de projets et participants aux formations du jour.
+              Feuille de présence numérique officielle pour les parcours Pré-Création et Post-Création.
             </p>
-            <div className="text-emerald-400 text-sm font-semibold flex items-center gap-2">
-              (Scannez le QR Code de l'Atelier)
+            <div className="text-emerald-400 text-sm font-semibold flex items-center gap-2 group-hover:gap-3 transition-all">
+              Accéder au formulaire <span>→</span>
             </div>
           </div>
         </div>

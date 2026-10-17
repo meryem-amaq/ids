@@ -107,25 +107,59 @@ app.post('/api/reservations/demande', async (req, res) => {
     }
 });
 
-// 2. Réception d'un émargement (Événements)
-app.post('/api/presence/enregistrer', async (req, res) => {
+// 2. Réception d'un émargement (Événements & Formations)
+const handlePresenceRegistration = async (req, res) => {
     try {
-        const { atelierId, nom, prenom, pp_numero, time } = req.body;
+        const { atelierId, nom, prenom, email, pp_numero, ppNumero, time } = req.body;
         
+        if (!atelierId || !nom) {
+            return res.status(400).json({ success: false, message: "Identifiant d'atelier et nom requis." });
+        }
+
+        const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+        if (!cleanEmail || !cleanEmail.includes('@')) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "L'adresse email est obligatoire et doit être valide pour émarger." 
+            });
+        }
+
+        const cleanNom = String(nom).trim().toUpperCase();
+        const cleanPrenom = prenom ? String(prenom).trim() : '—';
+        const cleanPp = (pp_numero || ppNumero || '—').trim().toUpperCase();
+        const timeStr = time || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        // S'assurer silencieusement que la colonne email existe dans cloud_presences
+        try {
+            await pool.query("ALTER TABLE cloud_presences ADD COLUMN email VARCHAR(150) NOT NULL DEFAULT '' AFTER prenom");
+        } catch (_) {}
+
         const [result] = await pool.query(
-            `INSERT INTO cloud_presences (atelierId, nom, prenom, pp_numero, timeEmargement) VALUES (?, ?, ?, ?, ?)`,
-            [atelierId, nom, prenom, pp_numero, time]
+            `INSERT INTO cloud_presences (atelierId, nom, prenom, email, pp_numero, timeEmargement) VALUES (?, ?, ?, ?, ?, ?)`,
+            [atelierId, cleanNom, cleanPrenom, cleanEmail, cleanPp, timeStr]
         );
         
         res.status(201).json({ 
             success: true, 
-            data: { nom, prenom, pp_numero, time } 
+            message: "Présence enregistrée avec succès sur le relais cloud",
+            data: { 
+                id: result.insertId,
+                atelierId, 
+                nom: cleanNom, 
+                prenom: cleanPrenom, 
+                email: cleanEmail, 
+                pp_numero: cleanPp, 
+                time: timeStr 
+            } 
         });
     } catch (error) {
-        console.error(error);
+        console.error("Erreur enregistrement présence cloud :", error);
         res.status(500).json({ success: false, message: "Erreur serveur cloud" });
     }
-});
+};
+
+app.post('/api/presence/enregistrer', handlePresenceRegistration);
+app.post('/api/presences', handlePresenceRegistration);
 
 // 3. API pour que le composant React sache si l'événement est forcé (ouvert/fermé)
 app.get('/api/presence/atelier/:id/info', async (req, res) => {
@@ -187,6 +221,58 @@ app.post('/api/sync/whitelist', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Erreur serveur cloud" });
+    }
+});
+
+// 6. API d'aspiration pour le serveur local (Pull des réservations et présences)
+app.get('/api/sync/pull', async (req, res) => {
+    try {
+        const [reservations] = await pool.query(
+            'SELECT * FROM cloud_reservations WHERE sync_status = "pending" ORDER BY id ASC'
+        );
+        const [presences] = await pool.query(
+            'SELECT * FROM cloud_presences WHERE sync_status = "pending" ORDER BY id ASC'
+        );
+
+        // Formatage pour conformité parfaite avec SyncService.js
+        const formattedPresences = presences.map(p => ({
+            id: p.id,
+            atelier_id: p.atelierId,
+            nom: p.nom,
+            prenom: p.prenom,
+            email: p.email,
+            pp_numero: p.pp_numero,
+            time: p.timeEmargement || p.time,
+            created_at: p.created_at
+        }));
+
+        res.json({
+            success: true,
+            reservations,
+            presences: formattedPresences
+        });
+    } catch (error) {
+        console.error("Erreur sync pull cloud :", error);
+        res.status(500).json({ success: false, message: "Erreur récupération sync cloud" });
+    }
+});
+
+// 7. API de confirmation de purge / marquage après aspiration locale
+app.post('/api/sync/clean', async (req, res) => {
+    try {
+        const { reservationIds, presenceIds } = req.body;
+        
+        if (Array.isArray(reservationIds) && reservationIds.length > 0) {
+            await pool.query('UPDATE cloud_reservations SET sync_status = "synced" WHERE id IN (?)', [reservationIds]);
+        }
+        if (Array.isArray(presenceIds) && presenceIds.length > 0) {
+            await pool.query('UPDATE cloud_presences SET sync_status = "synced" WHERE id IN (?)', [presenceIds]);
+        }
+
+        res.json({ success: true, message: "Éléments synchronisés avec succès" });
+    } catch (error) {
+        console.error("Erreur sync clean cloud :", error);
+        res.status(500).json({ success: false, message: "Erreur marquage sync cloud" });
     }
 });
 

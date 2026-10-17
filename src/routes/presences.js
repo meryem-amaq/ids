@@ -57,10 +57,15 @@ function verifyAtelierWindow(event) {
 // POST /api/presences (Enregistre l'émargement d'un incubé ou participant)
 router.post('/', (req, res) => {
   try {
-    const { atelierId, incubeId, nom, prenom, ppNumero, time } = req.body;
+    const { atelierId, incubeId, nom, prenom, ppNumero, email, time } = req.body;
 
     if (!atelierId || (!nom && !incubeId)) {
       return res.status(400).json({ message: 'Identifiant de l\'atelier et nom du participant requis' });
+    }
+
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return res.status(400).json({ message: "L'adresse email est obligatoire et doit être valide pour émarger." });
     }
 
     // Vérifier l'état de l'atelier si disponible
@@ -79,6 +84,7 @@ router.post('/', (req, res) => {
       incubeId: incubeId ? String(incubeId) : null,
       nom: (nom || '—').trim(),
       prenom: (prenom || '—').trim(),
+      email: cleanEmail,
       ppNumero: (ppNumero || '—').trim(),
       time: timeStr
     });

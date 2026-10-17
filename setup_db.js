@@ -33,6 +33,7 @@ async function setupDatabase() {
                 atelierId VARCHAR(50) NOT NULL,
                 nom VARCHAR(100) NOT NULL,
                 prenom VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL,
                 pp_numero VARCHAR(50),
                 timeEmargement VARCHAR(10) NOT NULL,
                 dateCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

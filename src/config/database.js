@@ -40,10 +40,12 @@ try {
       incube_id TEXT,
       nom TEXT NOT NULL,
       prenom TEXT,
+      email TEXT,
       pp_numero TEXT,
       time TEXT,
       signed_at TEXT DEFAULT (datetime('now'))
     );
+    try { db.exec("ALTER TABLE presences_attente ADD COLUMN email TEXT;"); } catch(_) {}
 
     CREATE TABLE IF NOT EXISTS evenements_publics (
       id TEXT PRIMARY KEY,
@@ -145,14 +147,15 @@ const database = {
     if (useNativeSqlite) {
       const stmt = db.prepare(`
         INSERT INTO presences_attente 
-        (atelier_id, incube_id, nom, prenom, pp_numero, time)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (atelier_id, incube_id, nom, prenom, email, pp_numero, time)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(
         String(data.atelierId),
         data.incubeId ? String(data.incubeId) : null,
         data.nom,
         data.prenom || '—',
+        data.email || '—',
         data.ppNumero || '—',
         data.time || new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
       );

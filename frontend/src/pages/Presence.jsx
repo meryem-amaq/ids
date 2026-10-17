@@ -14,7 +14,8 @@ import {
   Unlock,
   ArrowLeft,
   Send,
-  Hash
+  Hash,
+  Mail
 } from 'lucide-react';
 
 // Fonction utilitaire pour convertir toute date (DD/MM/YYYY, YYYY-MM-DD, ISO) en format standard YYYY-MM-DD
@@ -80,10 +81,12 @@ export default function Presence() {
   });
 
 
-  // Champs de saisie directe : UNIQUEMENT Nom, Prénom et ID PP
+  // Champs de saisie directe : Nom, Prénom, Email et ID PP
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
+  const [email, setEmail] = useState('');
   const [ppNumero, setPpNumero] = useState('');
+  const [forceShowForm, setForceShowForm] = useState(searchParams.get('test') === '1');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
@@ -220,14 +223,14 @@ export default function Presence() {
     return () => clearInterval(timer);
   }, [atelierInfo.date, atelierInfo.heureDebut, atelierInfo.heureFin, atelierInfo.statutOuverture]);
 
-  // Validation du formulaire : Nom et Prénom sont obligatoires
-  const isFormValid = nom.trim().length > 0 && prenom.trim().length > 0;
+  // Validation du formulaire : Nom, Prénom et Email sont obligatoires
+  const isFormValid = nom.trim().length > 0 && prenom.trim().length > 0 && email.trim().length > 0 && email.includes('@');
 
   // Validation de l'émargement
   const handleConfirmPresence = async (e) => {
     if (e) e.preventDefault();
     if (!isFormValid) {
-      setErrorMessage("Veuillez renseigner votre Nom et votre Prénom.");
+      setErrorMessage("Veuillez renseigner votre Nom, Prénom et un Email valide.");
       return;
     }
 
@@ -236,6 +239,7 @@ export default function Presence() {
 
     const cleanNom = nom.trim().toUpperCase();
     const cleanPrenom = prenom.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const cleanPp = ppNumero.trim().toUpperCase();
     const timeStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -243,6 +247,7 @@ export default function Presence() {
       atelierId: id,
       nom: cleanNom,
       prenom: cleanPrenom,
+      email: cleanEmail,
       pp_numero: cleanPp || undefined,
       time: timeStr
     };
@@ -250,7 +255,7 @@ export default function Presence() {
     setErrorMessage('');
 
     try {
-      // 1. Envoi au serveur Backend (résolution et enregistrement de l'identité en BDD)
+      // 1. Envoi au serveur Cloud (résolution et enregistrement de l'identité en BDD)
       const headers = {
         'Content-Type': 'application/json',
         'ngrok-skip-browser-warning': 'true',
@@ -282,6 +287,7 @@ export default function Presence() {
       const finalPpNumero = resolved.pp_numero || cleanPp || '—';
       const finalNom = resolved.nom || cleanNom;
       const finalPrenom = resolved.prenom || cleanPrenom;
+      const finalEmail = resolved.email || cleanEmail;
       const finalTime = resolved.time || timeStr;
 
       // 2. Sauvegarde dans le localStorage local pour résilience hors-ligne
@@ -294,6 +300,7 @@ export default function Presence() {
           time: finalTime,
           nom: finalNom,
           prenom: finalPrenom,
+          email: finalEmail,
           pp_numero: finalPpNumero
         };
         localStorage.setItem('ids_ateliers_presences', JSON.stringify(presences));
@@ -304,6 +311,7 @@ export default function Presence() {
       setSignedData({
         nom: finalNom,
         prenom: finalPrenom,
+        email: finalEmail,
         pp_numero: finalPpNumero,
         time: finalTime
       });
@@ -549,7 +557,25 @@ export default function Presence() {
                     </div>
                   </div>
 
-                  {/* Champ 3 : ID PP */}
+                  {/* Champ 3 : EMAIL (OBLIGATOIRE) */}
+                  <div>
+                    <label className="text-[11px] font-extrabold text-slate-700 dark:text-dark-200 uppercase tracking-wider block mb-1">
+                      Adresse Email <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail size={15} className="absolute left-3.5 top-3 text-slate-400" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="ex: m.benjelloun@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-white dark:bg-dark-900 border border-slate-300 dark:border-dark-700 text-sm font-bold rounded-xl pl-10 pr-3.5 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 transition-colors placeholder:text-slate-400 lowercase shadow-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Champ 4 : ID PP */}
                   <div>
                     <label className="text-[11px] font-extrabold text-slate-700 dark:text-dark-200 uppercase tracking-wider block mb-1">
                       Identifiant ID PP <span className="text-slate-400 font-normal">(ex: PP-05)</span>
@@ -601,6 +627,7 @@ export default function Presence() {
                 <div className="p-3.5 bg-white dark:bg-dark-900 rounded-xl border border-emerald-500/30 text-xs text-left space-y-1.5 shadow-xs">
                   <div><strong>Atelier :</strong> {atelierInfo.titre}</div>
                   <div><strong>Participant :</strong> {signedData?.nom} {signedData?.prenom}</div>
+                  <div><strong>Email :</strong> {signedData?.email}</div>
                   <div><strong>Identifiant :</strong> {signedData?.pp_numero}</div>
                   <div><strong>Heure d'émargement :</strong> {signedData?.time}</div>
                 </div>
@@ -610,6 +637,7 @@ export default function Presence() {
                     setIsSigned(false);
                     setNom('');
                     setPrenom('');
+                    setEmail('');
                     setPpNumero('');
                   }}
                   className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer pt-1"
@@ -622,10 +650,10 @@ export default function Presence() {
 
           <div className="pt-2 border-t border-slate-100 dark:border-dark-700/60 text-center">
             <Link 
-              to="/evenements"
+              to="/"
               className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline inline-flex items-center gap-1"
             >
-              <ArrowLeft size={13} /> Revenir à l'application Événements
+              <ArrowLeft size={13} /> Revenir à l'accueil du portail
             </Link>
           </div>
 
