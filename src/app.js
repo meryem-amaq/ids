@@ -32,38 +32,65 @@ app.get('/health', (req, res) => {
 // ROUTES API - RECEPTION DES FORMULAIRES
 // -------------------------------------------------------------
 
-// 1. Réception d'une demande de réservation (Fablab / Studio)
+// 1. Réception d'une demande de réservation (Fablab / Studio / Salles)
 app.post('/api/reservations/demande', async (req, res) => {
     try {
-        const { espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises } = req.body;
+        const { espace, salle, salleSpecifique, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, duree, motif, equipementsUtilises } = req.body;
         
-        // Vérification de la liste blanche
+        // 1. Nettoyage strict et validation de l'adresse email
+        const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+        if (!cleanEmail || !cleanEmail.includes('@')) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "L'adresse email est obligatoire et doit être valide pour réserver." 
+            });
+        }
+
+        // 2. VÉRIFICATION STRICTE PAR EMAIL DANS LA LISTE BLANCHE
+        // Seuls les porteurs de projet dont l'adresse email est dans la liste blanche sont autorisés.
         const [authRows] = await pool.query(
-            'SELECT email FROM cloud_porteurs_autorises WHERE email = ? OR pp_numero = ?',
-            [email, numero_pp || '']
+            'SELECT email, pp_numero FROM cloud_porteurs_autorises WHERE LOWER(TRIM(email)) = ?',
+            [cleanEmail]
         );
 
         if (authRows.length === 0) {
             return res.status(403).json({ 
                 success: false, 
-                message: "Accès refusé : Cet email ou N° Porteur de Projet n'est pas reconnu dans notre système." 
+                message: "Accès refusé : Cette adresse email n'est pas autorisée sur la liste blanche de l'incubateur." 
             });
         }
 
-        const emailAuth = email || '';
-        const ppAuth = numero_pp || '';
+        // Récupérer le numéro PP officiel associé à cet email
+        const officialPP = authRows[0].pp_numero || '';
+        const cleanPP = (numero_pp ? String(numero_pp).trim().toUpperCase() : '') || officialPP;
+        const cleanNom = String(nomComplet || '').trim();
+        const cleanTel = telephone ? String(telephone).trim() : '';
+        const targetSalle = salleSpecifique || salle || null;
 
-        // --- NOUVELLES REGLES DE LIMITATION ---
+        // Calcul propre de la durée en minutes si format '1h', '2h', '4h' ou numérique
+        let parsedMinutes = 120;
+        if (dureeMinutes && !isNaN(dureeMinutes)) {
+            parsedMinutes = parseInt(dureeMinutes, 10);
+        } else if (duree && typeof duree === 'string') {
+            const matchH = duree.match(/(\d+)\s*h/i);
+            if (matchH) parsedMinutes = parseInt(matchH[1], 10) * 60;
+        } else if (espace === 'fablab') {
+            parsedMinutes = 60;
+        } else if (espace === 'studio') {
+            parsedMinutes = 240;
+        }
+
+        // --- RÈGLES DE LIMITATION PAR SEMAINE ---
         
-        // 1. Studio : Max 1 fois par semaine
+        // 1. Studio : Max 1 fois par semaine par email
         if (espace === 'studio') {
             const [studioRows] = await pool.query(
                 `SELECT COUNT(*) as total 
                  FROM cloud_reservations 
-                 WHERE (email = ? OR (numero_pp != '' AND numero_pp = ?))
+                 WHERE LOWER(TRIM(email)) = ?
                  AND espace = 'studio' 
                  AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
-                [emailAuth, ppAuth, dateReservation]
+                [cleanEmail, dateReservation]
             );
             if (studioRows[0].total >= 1) {
                 return res.status(403).json({
@@ -73,19 +100,18 @@ app.post('/api/reservations/demande', async (req, res) => {
             }
         }
 
-        // 2. Salles : Max 10h par semaine (600 minutes)
-        const dureeResa = dureeMinutes || 120; // par défaut 2h = 120 min
+        // 2. Salles : Max 10h par semaine (600 minutes) par email
         if (espace === 'salle_reunion') {
             const [salleRows] = await pool.query(
                 `SELECT SUM(dureeMinutes) as total_minutes 
                  FROM cloud_reservations 
-                 WHERE (email = ? OR (numero_pp != '' AND numero_pp = ?))
+                 WHERE LOWER(TRIM(email)) = ?
                  AND espace = 'salle_reunion' 
                  AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
-                [emailAuth, ppAuth, dateReservation]
+                [cleanEmail, dateReservation]
             );
             const totalPrecedent = salleRows[0].total_minutes || 0;
-            if (totalPrecedent + dureeResa > 600) {
+            if (totalPrecedent + parsedMinutes > 600) {
                 return res.status(403).json({
                     success: false,
                     message: `Limite atteinte : Vous avez déjà réservé ${totalPrecedent / 60}h de salles cette semaine (maximum 10h par semaine).`
@@ -93,16 +119,17 @@ app.post('/api/reservations/demande', async (req, res) => {
             }
         }
 
+        // 3. Enregistrement sécurisé
         const [result] = await pool.query(
             `INSERT INTO cloud_reservations 
             (espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [espace, salle, nomComplet, telephone, email, numero_pp || null, dateReservation, heureDebut, heureFin, dureeMinutes || 120, motif, equipementsUtilises]
+            [espace, targetSalle, cleanNom, cleanTel, cleanEmail, cleanPP, dateReservation, heureDebut, heureFin, parsedMinutes, motif, equipementsUtilises]
         );
         
         res.status(201).json({ success: true, message: "Réservation enregistrée sur le cloud", id: result.insertId });
     } catch (error) {
-        console.error(error);
+        console.error("Erreur enregistrement réservation cloud :", error);
         res.status(500).json({ success: false, message: "Erreur serveur cloud" });
     }
 });
@@ -234,7 +261,41 @@ app.get('/api/sync/pull', async (req, res) => {
             'SELECT * FROM cloud_presences WHERE sync_status = "pending" ORDER BY id ASC'
         );
 
-        // Formatage pour conformité parfaite avec SyncService.js
+        // Formatage pour conformité parfaite avec SyncService.js (supporte tous les alias de champs)
+        const formattedReservations = reservations.map(r => ({
+            id: r.id,
+            espace: r.espace,
+            salle: r.salle,
+            salle_specifique: r.salle,
+            salleSpecifique: r.salle,
+            nomComplet: r.nomComplet,
+            nom_incube: r.nomComplet,
+            nomIncube: r.nomComplet,
+            email: r.email,
+            email_incube: r.email,
+            emailIncube: r.email,
+            telephone: r.telephone,
+            telephone_incube: r.telephone,
+            telephoneIncube: r.telephone,
+            numero_pp: r.numero_pp,
+            pp_numero: r.numero_pp,
+            dateReservation: r.dateReservation,
+            date_reservation: r.dateReservation,
+            heureDebut: r.heureDebut,
+            heure_debut: r.heureDebut,
+            heureFin: r.heureFin,
+            heure_fin: r.heureFin,
+            duree: `${Math.round((r.dureeMinutes || 120) / 60)}h`,
+            dureeMinutes: r.dureeMinutes,
+            motif: r.motif,
+            motif_utilisation: r.motif,
+            motifUtilisation: r.motif,
+            equipementsUtilises: r.equipementsUtilises,
+            equipements_utilises: r.equipementsUtilises,
+            dateCreation: r.dateCreation,
+            created_at: r.dateCreation
+        }));
+
         const formattedPresences = presences.map(p => ({
             id: p.id,
             atelier_id: p.atelierId,
@@ -248,7 +309,7 @@ app.get('/api/sync/pull', async (req, res) => {
 
         res.json({
             success: true,
-            reservations,
+            reservations: formattedReservations,
             presences: formattedPresences
         });
     } catch (error) {
