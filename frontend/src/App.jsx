@@ -14,6 +14,8 @@ function App() {
         <Route path="/formation/:id" element={<PresenceFormation />} />
         <Route path="/reserver-espace/:espace" element={<ReservationEspacePublique />} />
         <Route path="/booking/:espace" element={<ReservationEspacePublique />} />
+        <Route path="/booking" element={<Navigate to="/booking/fablab" replace />} />
+        <Route path="/reserver-espace" element={<Navigate to="/booking/fablab" replace />} />
         
         {/* Fallback to something if they hit the root */}
         <Route path="/" element={<PortalIndex />} />
