@@ -44,7 +44,7 @@ const ESPACES = [
     icon: Users,
     duree: 'Créneaux de 2 heures',
     description: 'Espaces professionnels pour réunions d\'équipe, présentations clients et sessions de formation.',
-    zones: ['Salle 1 (6-8 pers.)', 'Salle 2 (6-8 pers.)', 'Salle de Formation (20+ pers.)'],
+    zones: ['Salle 1 (6-8 pers.)', 'Salle 2 (6-8 pers.)', 'Salle 3 (20+ pers.)'],
     materiels: ['Écrans tactiles 4K', 'Système Visioconférence', 'Paperboard connecté'],
     path: '/booking/salle_reunion'
   }
@@ -154,7 +154,7 @@ export default function PortalIndex() {
         <div className="mt-12 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-800/60 border border-slate-700/70 text-slate-300 text-xs">
             <Sparkles size={14} className="text-amber-400" />
-            <span>Accès sécurisé : la réservation requiert une adresse email ou un numéro de projet autorisé sur la liste blanche.</span>
+            <span>Accès sécurisé : la réservation requiert une adresse email ou un numéro de porteur de projet autorisé sur la liste blanche.</span>
           </div>
         </div>
       </main>

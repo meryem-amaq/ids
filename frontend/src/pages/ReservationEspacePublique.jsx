@@ -9,7 +9,7 @@ export const SOUS_SALLES = {
   salle_reunion: [
     { id: 'Salle 1', nom: 'Salle 1', description: 'Salle de réunion 1 (6-8 pers.)' },
     { id: 'Salle 2', nom: 'Salle 2', description: 'Salle de réunion 2 (6-8 pers.)' },
-    { id: 'Salle de formation', nom: 'Salle de formation', description: 'Grande salle (20+ pers.)' }
+    { id: 'Salle 3', nom: 'Salle de formation', description: 'Grande salle (20+ pers.)' }
   ],
   fablab: [
     { id: 'Fablab 1', nom: 'Fablab 1 (Étage)', description: 'Atelier Principal • Impression 3D & Laser' },
