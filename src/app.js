@@ -60,8 +60,10 @@ app.post('/api/reservations/demande', async (req, res) => {
             });
         }
 
-        // Récupérer le numéro PP officiel associé à cet email
+        // Récupérer le numéro PP officiel associé à cet email et vérifier si c'est un compte ADMIN ou STAFF
         const officialPP = authRows[0].pp_numero || '';
+        const isStaffOrAdmin = ['ADMIN', 'SUPER_ADMIN', 'ADMINISTRATEUR', 'STAFF', 'ACCOMPAGNATEUR', 'CONSULTANT']
+            .includes(String(officialPP).trim().toUpperCase());
         const cleanPP = (numero_pp ? String(numero_pp).trim().toUpperCase() : '') || officialPP;
         const cleanNom = String(nomComplet || '').trim();
         const cleanTel = telephone ? String(telephone).trim() : '';
@@ -81,41 +83,43 @@ app.post('/api/reservations/demande', async (req, res) => {
         }
 
         // --- RÈGLES DE LIMITATION PAR SEMAINE ---
-        
-        // 1. Studio : Max 1 fois par semaine par email
-        if (espace === 'studio') {
-            const [studioRows] = await pool.query(
-                `SELECT COUNT(*) as total 
-                 FROM cloud_reservations 
-                 WHERE LOWER(TRIM(email)) = ?
-                 AND espace = 'studio' 
-                 AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
-                [cleanEmail, dateReservation]
-            );
-            if (studioRows[0].total >= 1) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Limite atteinte : Vous avez déjà réservé le Studio cette semaine (maximum 1 fois par semaine)."
-                });
+        // Note: Les Administrateurs et le Staff IDS sont exemptés de toute limitation hebdomadaire
+        if (!isStaffOrAdmin) {
+            // 1. Studio : Max 1 fois par semaine par email (Incubés)
+            if (espace === 'studio') {
+                const [studioRows] = await pool.query(
+                    `SELECT COUNT(*) as total 
+                     FROM cloud_reservations 
+                     WHERE LOWER(TRIM(email)) = ?
+                     AND espace = 'studio' 
+                     AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
+                    [cleanEmail, dateReservation]
+                );
+                if (studioRows[0].total >= 1) {
+                    return res.status(403).json({
+                        success: false,
+                        message: "Limite atteinte : Vous avez déjà réservé le Studio cette semaine (maximum 1 fois par semaine)."
+                    });
+                }
             }
-        }
 
-        // 2. Salles : Max 10h par semaine (600 minutes) par email
-        if (espace === 'salle_reunion') {
-            const [salleRows] = await pool.query(
-                `SELECT SUM(dureeMinutes) as total_minutes 
-                 FROM cloud_reservations 
-                 WHERE LOWER(TRIM(email)) = ?
-                 AND espace = 'salle_reunion' 
-                 AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
-                [cleanEmail, dateReservation]
-            );
-            const totalPrecedent = salleRows[0].total_minutes || 0;
-            if (totalPrecedent + parsedMinutes > 600) {
-                return res.status(403).json({
-                    success: false,
-                    message: `Limite atteinte : Vous avez déjà réservé ${totalPrecedent / 60}h de salles cette semaine (maximum 10h par semaine).`
-                });
+            // 2. Salles : Max 10h par semaine (600 minutes) par email (Incubés)
+            if (espace === 'salle_reunion') {
+                const [salleRows] = await pool.query(
+                    `SELECT SUM(dureeMinutes) as total_minutes 
+                     FROM cloud_reservations 
+                     WHERE LOWER(TRIM(email)) = ?
+                     AND espace = 'salle_reunion' 
+                     AND YEARWEEK(dateReservation, 1) = YEARWEEK(?, 1)`,
+                    [cleanEmail, dateReservation]
+                );
+                const totalPrecedent = salleRows[0].total_minutes || 0;
+                if (totalPrecedent + parsedMinutes > 600) {
+                    return res.status(403).json({
+                        success: false,
+                        message: `Limite atteinte : Vous avez déjà réservé ${totalPrecedent / 60}h de salles cette semaine (maximum 10h par semaine).`
+                    });
+                }
             }
         }
 
