@@ -117,8 +117,8 @@ export default function ReservationEspacePublique() {
     return {
       nomComplet: '',
       email: '',
-      numero_pp: '',
       telephone: '',
+      invitesExternes: '',
       dateReservation: new Date().toISOString().split('T')[0],
       heureDebut: slots[0]?.debut || '08:00',
       heureFin: slots[0]?.fin || '09:00',
@@ -327,13 +327,14 @@ export default function ReservationEspacePublique() {
           salleSpecifique: selectedSousSalle || null,
           nomComplet: form.nomComplet.trim(),
           email: form.email.trim(),
-          numero_pp: form.numero_pp.trim(),
           telephone: form.telephone.trim(),
           dateReservation: form.dateReservation,
           heureDebut: form.heureDebut,
           heureFin: form.heureFin,
           duree: currentDuree,
-          motif: form.motif.trim(),
+          motif: form.invitesExternes && form.invitesExternes.trim() 
+            ? `${form.motif.trim()}\n👥 Invités externes : ${form.invitesExternes.trim()}`
+            : form.motif.trim(),
           equipementsUtilises: form.equipementsUtilises.trim()
         })
       });
@@ -421,11 +422,11 @@ export default function ReservationEspacePublique() {
         {/* FORMULAIRE DE RÉSERVATION PRINCIPAL COMPACT & PARALLÈLE */}
         <form onSubmit={handleSubmit} className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-2xl backdrop-blur-sm">
 
-          {/* LIGNE 1 : NOM & TÉLÉPHONE EN PARALLÈLE */}
+          {/* LIGNE 1 : NOM & EMAIL OFFICIEL */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                Nom & Prénom de l'incubé *
+                Nom & Prénom *
               </label>
               <input
                 type="text"
@@ -439,24 +440,7 @@ export default function ReservationEspacePublique() {
 
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-1">
-                N° Porteur de Projet *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Ex: PP-2026-001"
-                value={form.numero_pp}
-                onChange={e => setForm({ ...form, numero_pp: e.target.value })}
-                className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* LIGNE 2 : EMAIL & TÉLÉPHONE EN PARALLÈLE */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Email de confirmation *
+                Email officiel (Inscrit à l'incubateur) *
               </label>
               <input
                 type="email"
@@ -467,19 +451,20 @@ export default function ReservationEspacePublique() {
                 className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
               />
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Téléphone
-              </label>
-              <input
-                type="tel"
-                placeholder="06 XX XX XX XX"
-                value={form.telephone}
-                onChange={e => setForm({ ...form, telephone: e.target.value })}
-                className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
-              />
-            </div>
+          {/* LIGNE 2 : TÉLÉPHONE */}
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1">
+              Numéro de téléphone
+            </label>
+            <input
+              type="tel"
+              placeholder="06 XX XX XX XX"
+              value={form.telephone}
+              onChange={e => setForm({ ...form, telephone: e.target.value })}
+              className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none transition-colors"
+            />
           </div>
 
           {/* LIGNE 2b : SALLE UNIQUE (100% width) */}
@@ -769,6 +754,23 @@ export default function ReservationEspacePublique() {
               value={form.motif}
               onChange={e => setForm({ ...form, motif: e.target.value })}
               className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl p-2.5 focus:border-amber-500 outline-none placeholder:text-slate-500"
+            />
+          </div>
+
+          {/* PERSONNES EXTERNES / INVITÉS (OPTIONNEL) */}
+          <div className="space-y-1 pt-1 border-t border-slate-800/80">
+            <div className="flex items-center justify-between mb-0.5">
+              <label className="block text-xs font-bold text-slate-300">
+                👥 Invités ou personnes externes (Optionnel)
+              </label>
+              <span className="text-[10px] text-amber-400 font-medium">Clients, partenaires, prestataires...</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Ex: Karim Alami (Client), Sara Berrada (Designer externe)..."
+              value={form.invitesExternes || ''}
+              onChange={e => setForm({ ...form, invitesExternes: e.target.value })}
+              className="w-full bg-slate-800/80 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 focus:border-amber-500 outline-none placeholder:text-slate-500"
             />
           </div>
 

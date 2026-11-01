@@ -1,5 +1,7 @@
 node_modules/
 .env
+*.sql
+frontend/node_modules/
 data/
 *.sqlite
 *.log

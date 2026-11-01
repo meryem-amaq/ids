@@ -123,6 +123,32 @@ app.post('/api/reservations/demande', async (req, res) => {
             }
         }
 
+        // 2bis. VÉRIFICATION STRICTE DE COLLISION HORAIRE (ANTI-DOUBLONS & CONCURRENCE SIMULTANÉE)
+        let checkConflictQuery = `
+            SELECT id, nomComplet, heureDebut, heureFin, salle 
+            FROM cloud_reservations 
+            WHERE espace = ? 
+              AND dateReservation = ? 
+              AND sync_status IN ('pending', 'synced')
+              AND heureDebut < ? 
+              AND heureFin > ?
+        `;
+        const conflictParams = [espace, dateReservation, heureFin, heureDebut];
+
+        if (targetSalle) {
+            checkConflictQuery += ` AND (salle = ? OR salle IS NULL OR salle = '')`;
+            conflictParams.push(targetSalle);
+        }
+
+        const [conflictRows] = await pool.query(checkConflictQuery, conflictParams);
+        if (conflictRows.length > 0) {
+            const precisionSalle = targetSalle ? ` pour la salle "${targetSalle}"` : '';
+            return res.status(409).json({
+                success: false,
+                message: `Ce créneau (${heureDebut} à ${heureFin})${precisionSalle} est déjà réservé ou vient d'être pris. Veuillez choisir un autre créneau disponible.`
+            });
+        }
+
         // 3. Enregistrement sécurisé
         const [result] = await pool.query(
             `INSERT INTO cloud_reservations 
@@ -210,10 +236,34 @@ app.get('/api/presence/atelier/:id/info', async (req, res) => {
 // 4. API de récupération des créneaux déjà pris (pour griser les heures dans React)
 app.get('/api/reservations', async (req, res) => {
     try {
-        // Le cloud renvoie ses propres réservations en attente
-        const [rows] = await pool.query('SELECT dateReservation, heureDebut, heureFin, espace, salle FROM cloud_reservations WHERE sync_status = "pending"');
-        res.json(rows);
+        // Renvoie toutes les réservations actives (en attente ou synchronisées) pour aujourd'hui et les dates futures
+        const [rows] = await pool.query(`
+            SELECT id, dateReservation, heureDebut, heureFin, espace, salle 
+            FROM cloud_reservations 
+            WHERE dateReservation >= CURDATE() 
+              AND sync_status IN ('pending', 'synced')
+            ORDER BY dateReservation ASC, heureDebut ASC
+        `);
+        const formatted = rows.map(r => {
+            let dStr = r.dateReservation;
+            if (r.dateReservation instanceof Date) {
+                dStr = r.dateReservation.toISOString().split('T')[0];
+            } else if (typeof r.dateReservation === 'string') {
+                dStr = r.dateReservation.split('T')[0];
+            }
+            return {
+                id: r.id,
+                espace: r.espace,
+                salle: r.salle,
+                salleSpecifique: r.salle,
+                dateReservation: dStr,
+                heureDebut: r.heureDebut,
+                heureFin: r.heureFin
+            };
+        });
+        res.json(formatted);
     } catch (error) {
+        console.error("Erreur récupération créneaux cloud :", error);
         res.json([]);
     }
 });
@@ -338,6 +388,84 @@ app.post('/api/sync/clean', async (req, res) => {
     } catch (error) {
         console.error("Erreur sync clean cloud :", error);
         res.status(500).json({ success: false, message: "Erreur marquage sync cloud" });
+    }
+});
+
+// 8. API de réception des réservations locales poussées par le serveur Master (pour bloquer les créneaux en ligne)
+app.post('/api/sync/reservations-locales', async (req, res) => {
+    try {
+        const syncSecret = process.env.SYNC_SECRET || 'ids_secret_sync_key_987654321_secure';
+        const authHeader = req.headers.authorization;
+        const token = (authHeader && authHeader.startsWith('Bearer '))
+            ? authHeader.split(' ')[1]
+            : (req.headers['x-sync-secret'] || req.query.secret);
+
+        if (!token || token !== syncSecret) {
+            return res.status(401).json({ success: false, message: "Non autorisé : clé de synchronisation invalide" });
+        }
+
+        const { reservations } = req.body;
+        if (!Array.isArray(reservations)) {
+            return res.status(400).json({ success: false, message: "Format invalide : 'reservations' doit être un tableau" });
+        }
+
+        let updatedOrInserted = 0;
+        for (const r of reservations) {
+            const dateStr = r.dateReservation ? String(r.dateReservation).split('T')[0] : null;
+            if (!dateStr || !r.heureDebut || !r.heureFin) continue;
+
+            const targetSalle = r.salleSpecifique || r.salle || null;
+            const isCancelled = r.statut === 'annule' || r.statut === 'refuse';
+            const targetStatus = isCancelled ? 'cancelled' : 'synced';
+
+            // Vérifier si cette réservation existe déjà sur le cloud
+            const [existing] = await pool.query(
+                `SELECT id, sync_status FROM cloud_reservations 
+                 WHERE espace = ? 
+                   AND (
+                     (salle = ? OR (? IS NULL AND salle IS NULL) OR (? = '' AND (salle IS NULL OR salle = '')))
+                   )
+                   AND dateReservation = ? 
+                   AND heureDebut = ? 
+                   AND heureFin = ?
+                 LIMIT 1`,
+                [r.espace || 'fablab', targetSalle, targetSalle, targetSalle, dateStr, r.heureDebut, r.heureFin]
+            );
+
+            if (existing.length > 0) {
+                if (existing[0].sync_status !== targetStatus) {
+                    await pool.query('UPDATE cloud_reservations SET sync_status = ? WHERE id = ?', [targetStatus, existing[0].id]);
+                    updatedOrInserted++;
+                }
+            } else if (!isCancelled) {
+                // Insérer la réservation locale dans JawsDB pour bloquer le créneau sur le QR code en ligne
+                await pool.query(
+                    `INSERT INTO cloud_reservations 
+                    (espace, salle, nomComplet, telephone, email, numero_pp, dateReservation, heureDebut, heureFin, dureeMinutes, motif, equipementsUtilises, sync_status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')`,
+                    [
+                        r.espace || 'fablab',
+                        targetSalle,
+                        r.nomIncube || r.nomComplet || 'Réservation Locale IDS',
+                        r.telephoneIncube || r.telephone || '',
+                        r.emailIncube || r.email || '',
+                        r.ppNumero || '',
+                        dateStr,
+                        r.heureDebut,
+                        r.heureFin,
+                        r.dureeMinutes || 120,
+                        r.motifUtilisation || 'Réservé en local par administration',
+                        r.equipementsUtilises || ''
+                    ]
+                );
+                updatedOrInserted++;
+            }
+        }
+
+        res.json({ success: true, count: updatedOrInserted });
+    } catch (error) {
+        console.error("Erreur sync reservations-locales cloud :", error);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
