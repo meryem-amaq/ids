@@ -15,7 +15,7 @@ function renderConfirmationPage({
 
   const espaceLabels = {
     fablab: '🛠️ Espace FabLab',
-    studio: '🎥 Studio Média / Photo',
+    studio: '🎥 Studio IDS',
     salle_reunion: '🏢 Les Salles'
   };
   const espaceName = reservation ? (espaceLabels[reservation.espace] || reservation.espace || 'Espace Incubateur') : '';

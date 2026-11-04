@@ -20,7 +20,7 @@ const ESPACES = [
   },
   {
     id: 'studio',
-    nom: 'Studio Média / Photo',
+    nom: 'Studio IDS',
     badge: 'Média & Contenu 4K',
     badgeColor: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
     iconColor: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
@@ -29,7 +29,7 @@ const ESPACES = [
     icon: Video,
     duree: 'Créneaux de 4 heures',
     description: 'Plateau complet pour production audiovisuelle, enregistrement de podcasts et photos produits.',
-    zones: ['Studio Média & Podcast'],
+    zones: ['Studio IDS & Podcast'],
     materiels: ['Caméras 4K', 'Micros Studio Podcast', 'Éclairage Softbox', 'Fond Vert'],
     path: '/booking/studio'
   },

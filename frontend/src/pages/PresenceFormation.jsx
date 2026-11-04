@@ -195,7 +195,7 @@ export default function PresenceFormation() {
             Incubateur Digital Solidaire
           </h1>
           <p className="text-xs text-slate-400">
-            Portail Cloud d'Émargement aux Parcours Pédagogiques
+            Portail Cloud d'Émargement aux Formations Pré/Post-Création
           </p>
         </div>
 
