@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const { verifyConfirmationToken } = require('./utils/tokenHelper');
+const { renderConfirmationPage } = require('./views/confirmationView');
 require('dotenv').config();
 
 const app = express();
@@ -17,6 +19,22 @@ const pool = mysql.createPool(process.env.JAWSDB_URL || {
     password: '',
     database: 'ids_cloud_db'
 });
+// Migration automatique silencieuse pour les colonnes de confirmation/décision
+(async () => {
+    try {
+        await pool.query("ALTER TABLE cloud_reservations ADD COLUMN decision VARCHAR(20) DEFAULT 'en_attente'");
+    } catch (_) {}
+    try {
+        await pool.query("ALTER TABLE cloud_reservations ADD COLUMN decision_par VARCHAR(150) DEFAULT NULL");
+    } catch (_) {}
+    try {
+        await pool.query("ALTER TABLE cloud_reservations ADD COLUMN decision_date DATETIME DEFAULT NULL");
+    } catch (_) {}
+    try {
+        await pool.query("ALTER TABLE cloud_reservations ADD COLUMN decision_motif TEXT DEFAULT NULL");
+    } catch (_) {}
+})();
+
 
 // Health check
 app.get('/health', (req, res) => {
@@ -347,8 +365,25 @@ app.get('/api/sync/pull', async (req, res) => {
             equipementsUtilises: r.equipementsUtilises,
             equipements_utilises: r.equipementsUtilises,
             dateCreation: r.dateCreation,
-            created_at: r.dateCreation
+            created_at: r.dateCreation,
+            decision: r.decision || 'en_attente',
+            decision_par: r.decision_par || null,
+            decision_date: r.decision_date || null,
+            decision_motif: r.decision_motif || null
         }));
+
+        
+        let recentDecisions = [];
+        try {
+            const [decRows] = await pool.query(
+                `SELECT id, espace, salle, nomComplet, email, dateReservation, heureDebut, heureFin, decision, decision_par, decision_date, decision_motif 
+                 FROM cloud_reservations 
+                 WHERE decision IN ('valide', 'refuse') 
+                   AND dateReservation >= CURDATE() - INTERVAL 5 DAY 
+                 ORDER BY decision_date DESC LIMIT 50`
+            );
+            recentDecisions = decRows;
+        } catch (_) {}
 
         const formattedPresences = presences.map(p => ({
             id: p.id,
@@ -364,7 +399,8 @@ app.get('/api/sync/pull', async (req, res) => {
         res.json({
             success: true,
             reservations: formattedReservations,
-            presences: formattedPresences
+            presences: formattedPresences,
+            decisions: recentDecisions
         });
     } catch (error) {
         console.error("Erreur sync pull cloud :", error);
@@ -473,6 +509,143 @@ app.post('/api/sync/reservations-locales', async (req, res) => {
 // -------------------------------------------------------------
 // DEPLOIEMENT DU FRONTEND REACT
 // -------------------------------------------------------------
+
+
+// =============================================================
+// VALIDATION SÉCURISÉE DES RÉSERVATIONS PAR EMAIL (1-CLIC)
+// Protégée contre les robots anti-virus et les attaques par force brute
+// =============================================================
+
+// Page Web de confirmation (Affichage GET - Ne modifie jamais la base - Anti-Bot)
+app.get('/confirmer-reservation', async (req, res) => {
+    // 1. Protection Anti-Bot (Scanners d'emails, pre-fetching)
+    // Les bots d'analyse effectuent un GET pour tester l'URL sans intention d'action.
+    const isBotPrefetch = req.headers['x-purpose'] === 'preview' || req.headers['purpose'] === 'prefetch';
+    if (isBotPrefetch) {
+        return res.status(200).send('<!-- Anti-bot prefetch ignored -->');
+    }
+
+    const { token } = req.query;
+    if (!token) {
+        return res.status(400).send(renderConfirmationPage({
+            status: 'error',
+            errorMessage: 'Aucun jeton de validation sécurisé fourni dans ce lien.'
+        }));
+    }
+
+    // 2. Vérification cryptographique du token HMAC-SHA256
+    const verification = verifyConfirmationToken(token);
+    if (!verification.valid) {
+        return res.status(400).send(renderConfirmationPage({
+            status: 'error',
+            errorMessage: verification.error
+        }));
+    }
+
+    const { rid, act, eml } = verification.payload;
+
+    try {
+        // 3. Récupération des détails de la réservation
+        const [rows] = await pool.query(
+            'SELECT * FROM cloud_reservations WHERE id = ? LIMIT 1',
+            [rid]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).send(renderConfirmationPage({
+                status: 'error',
+                errorMessage: 'Cette demande de réservation est introuvable ou a été archivée.'
+            }));
+        }
+
+        const resData = rows[0];
+
+        // 4. Vérification si déjà traitée (Anti-Rejeu)
+        if (resData.decision === 'valide' || (resData.sync_status === 'synced' && resData.statut === 'valide')) {
+            return res.send(renderConfirmationPage({
+                status: 'already_valide',
+                action: act,
+                reservation: resData
+            }));
+        }
+
+        if (resData.decision === 'refuse' || resData.sync_status === 'cancelled') {
+            return res.send(renderConfirmationPage({
+                status: 'already_refuse',
+                action: act,
+                reservation: resData
+            }));
+        }
+
+        // 5. Affichage du formulaire d'action en 1 clic
+        res.send(renderConfirmationPage({
+            status: 'pending',
+            action: act,
+            token,
+            reservation: resData
+        }));
+    } catch (err) {
+        console.error('Erreur confirmation GET:', err);
+        res.status(500).send(renderConfirmationPage({
+            status: 'error',
+            errorMessage: 'Erreur technique lors du chargement de la réservation.'
+        }));
+    }
+});
+
+// Endpoint POST d'exécution réelle (Appelé par le clic humain sur le bouton)
+app.post('/api/reservations/confirmer-token', async (req, res) => {
+    try {
+        const { token, motif } = req.body;
+        if (!token) {
+            return res.status(400).json({ success: false, message: 'Token manquant' });
+        }
+
+        const verification = verifyConfirmationToken(token);
+        if (!verification.valid) {
+            return res.status(400).json({ success: false, message: verification.error });
+        }
+
+        const { rid, act, eml } = verification.payload;
+        const targetDecision = act === 'refuse' ? 'refuse' : 'valide';
+        const cleanMotif = motif ? String(motif).trim() : null;
+
+        const [rows] = await pool.query(
+            'SELECT id, decision FROM cloud_reservations WHERE id = ? LIMIT 1',
+            [rid]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Réservation introuvable' });
+        }
+
+        if (rows[0].decision === 'valide' || rows[0].decision === 'refuse') {
+            return res.json({ 
+                success: true, 
+                message: `Cette réservation a déjà été enregistrée comme "${rows[0].decision}".` 
+            });
+        }
+
+        await pool.query(
+            `UPDATE cloud_reservations 
+             SET decision = ?, decision_par = ?, decision_date = NOW(), decision_motif = ? 
+             WHERE id = ?`,
+            [targetDecision, eml || 'Accompagnateur', cleanMotif, rid]
+        );
+
+        console.log(`✅ [Cloud Confirmation] Réservation #${rid} marquée comme "${targetDecision}" par ${eml || 'Accompagnateur'}`);
+
+        res.json({
+            success: true,
+            message: targetDecision === 'valide' 
+                ? 'La réservation a été validée avec succès !' 
+                : 'La demande de réservation a été refusée.'
+        });
+    } catch (err) {
+        console.error('Erreur confirmation POST:', err);
+        res.status(500).json({ success: false, message: 'Erreur serveur lors de la validation' });
+    }
+});
 
 // Servir les fichiers React compilés (dossier dist) au lieu du dossier public
 const reactDistPath = path.join(__dirname, '../frontend/dist');
