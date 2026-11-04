@@ -43,3 +43,4 @@ pm2 startup
 - Les scanners de messagerie (antivirus) effectuent des requêtes `GET` de pré-chargement qui **ne déclenchent aucune modification en base**.
 - L'action réelle est effectuée via `POST /api/reservations/confirmer-token` uniquement suite au clic humain sur le bouton.
 - Le token est signé cryptographiquement en **HMAC-SHA256** (inviolable, expire sous 48h, usage unique).
+

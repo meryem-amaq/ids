@@ -275,3 +275,4 @@ function renderConfirmationPage({
 module.exports = {
   renderConfirmationPage
 };
+

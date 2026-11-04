@@ -35,7 +35,7 @@ const ESPACES = [
   },
   {
     id: 'salle_reunion',
-    nom: 'Salles & Formation',
+    nom: 'Les Salles',
     badge: 'Collaboration & Réunions',
     badgeColor: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
     iconColor: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -44,7 +44,7 @@ const ESPACES = [
     icon: Users,
     duree: 'Créneaux de 2 heures',
     description: 'Espaces professionnels pour réunions d\'équipe, présentations clients et sessions de formation.',
-    zones: ['Salle 1 (6-8 pers.)', 'Salle 2 (6-8 pers.)', 'Salle 3 (20+ pers.)'],
+    zones: ['Salle 1', 'Salle 2', 'Salle 3'],
     materiels: ['Écrans tactiles 4K', 'Système Visioconférence', 'Paperboard connecté'],
     path: '/booking/salle_reunion'
   }
