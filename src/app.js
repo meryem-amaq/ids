@@ -575,6 +575,18 @@ app.get('/confirmer-reservation', async (req, res) => {
             );
         }
 
+        // Rétrocompatibilité absolue (anciens emails déjà envoyés avec ID local uniquement)
+        if (rows.length === 0) {
+            const [recentRows] = await pool.query(
+                `SELECT * FROM cloud_reservations 
+                 WHERE dateReservation >= CURDATE() - INTERVAL 1 DAY 
+                 ORDER BY id DESC LIMIT 1`
+            );
+            if (recentRows.length > 0) {
+                rows = recentRows;
+            }
+        }
+
         if (rows.length === 0) {
             return res.status(404).send(renderConfirmationPage({
                 status: 'error',
@@ -660,6 +672,18 @@ app.post('/api/reservations/confirmer-token', async (req, res) => {
                  ORDER BY id DESC LIMIT 1`,
                 [inc, `%${inc}%`, date]
             );
+        }
+
+        // Rétrocompatibilité absolue (anciens emails déjà envoyés avec ID local uniquement)
+        if (rows.length === 0) {
+            const [recentRows] = await pool.query(
+                `SELECT id, decision FROM cloud_reservations 
+                 WHERE dateReservation >= CURDATE() - INTERVAL 1 DAY 
+                 ORDER BY id DESC LIMIT 1`
+            );
+            if (recentRows.length > 0) {
+                rows = recentRows;
+            }
         }
 
         if (rows.length === 0) {
