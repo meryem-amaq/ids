@@ -542,14 +542,38 @@ app.get('/confirmer-reservation', async (req, res) => {
         }));
     }
 
-    const { rid, act, eml } = verification.payload;
+    const { rid, act, eml, date, deb, fin, esp, inc } = verification.payload;
 
     try {
         // 3. Récupération des détails de la réservation
-        const [rows] = await pool.query(
+        let [rows] = await pool.query(
             'SELECT * FROM cloud_reservations WHERE id = ? LIMIT 1',
             [rid]
         );
+
+        // Fallback ultra-robuste : si l'ID ne matche pas directement (ex: jeton généré avec l'ID local du serveur)
+        if (rows.length === 0 && (date || deb || esp)) {
+            const fDate = date;
+            const fDeb = deb;
+            const fEsp = esp;
+            if (fDate && fDeb && fEsp) {
+                [rows] = await pool.query(
+                    `SELECT * FROM cloud_reservations 
+                     WHERE dateReservation = ? AND heureDebut = ? AND espace = ? 
+                     ORDER BY id DESC LIMIT 1`,
+                    [fDate, fDeb, fEsp]
+                );
+            }
+        }
+
+        if (rows.length === 0 && inc && date) {
+            [rows] = await pool.query(
+                `SELECT * FROM cloud_reservations 
+                 WHERE (email = ? OR nomComplet LIKE ?) AND dateReservation = ? 
+                 ORDER BY id DESC LIMIT 1`,
+                [inc, `%${inc}%`, date]
+            );
+        }
 
         if (rows.length === 0) {
             return res.status(404).send(renderConfirmationPage({
@@ -606,18 +630,43 @@ app.post('/api/reservations/confirmer-token', async (req, res) => {
             return res.status(400).json({ success: false, message: verification.error });
         }
 
-        const { rid, act, eml } = verification.payload;
+        const { rid, act, eml, date, deb, fin, esp, inc } = verification.payload;
         const targetDecision = act === 'refuse' ? 'refuse' : 'valide';
         const cleanMotif = motif ? String(motif).trim() : null;
 
-        const [rows] = await pool.query(
+        let [rows] = await pool.query(
             'SELECT id, decision FROM cloud_reservations WHERE id = ? LIMIT 1',
             [rid]
         );
 
+        if (rows.length === 0 && (date || deb || esp)) {
+            const fDate = date;
+            const fDeb = deb;
+            const fEsp = esp;
+            if (fDate && fDeb && fEsp) {
+                [rows] = await pool.query(
+                    `SELECT id, decision FROM cloud_reservations 
+                     WHERE dateReservation = ? AND heureDebut = ? AND espace = ? 
+                     ORDER BY id DESC LIMIT 1`,
+                    [fDate, fDeb, fEsp]
+                );
+            }
+        }
+
+        if (rows.length === 0 && inc && date) {
+            [rows] = await pool.query(
+                `SELECT id, decision FROM cloud_reservations 
+                 WHERE (email = ? OR nomComplet LIKE ?) AND dateReservation = ? 
+                 ORDER BY id DESC LIMIT 1`,
+                [inc, `%${inc}%`, date]
+            );
+        }
+
         if (rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Réservation introuvable' });
         }
+
+        const targetCloudId = rows[0].id;
 
         if (rows[0].decision === 'valide' || rows[0].decision === 'refuse') {
             return res.json({ 
@@ -630,10 +679,10 @@ app.post('/api/reservations/confirmer-token', async (req, res) => {
             `UPDATE cloud_reservations 
              SET decision = ?, decision_par = ?, decision_date = NOW(), decision_motif = ? 
              WHERE id = ?`,
-            [targetDecision, eml || 'Accompagnateur', cleanMotif, rid]
+            [targetDecision, eml || 'Accompagnateur', cleanMotif, targetCloudId]
         );
 
-        console.log(`✅ [Cloud Confirmation] Réservation #${rid} marquée comme "${targetDecision}" par ${eml || 'Accompagnateur'}`);
+        console.log(`✅ [Cloud Confirmation] Réservation #${targetCloudId} marquée comme "${targetDecision}" par ${eml || 'Accompagnateur'}`);
 
         res.json({
             success: true,
