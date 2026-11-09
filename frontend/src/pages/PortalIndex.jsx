@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Video, Users, ArrowRight, Clock, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Wrench, Video, Users, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
 
 const ESPACES = [
   {
@@ -149,20 +149,12 @@ export default function PortalIndex() {
             );
           })}
         </div>
-
-        {/* Info Banner at bottom */}
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-800/60 border border-slate-700/70 text-slate-300 text-xs">
-            <Sparkles size={14} className="text-amber-400" />
-            <span>Accès sécurisé : la réservation requiert une adresse email ou un numéro de porteur de projet autorisé sur la liste blanche.</span>
-          </div>
-        </div>
       </main>
 
       {/* Footer */}
       <footer className="relative z-10 py-6 text-center border-t border-slate-800/80 bg-[#001020]/60">
         <p className="text-slate-400 text-xs">
-          Incubateur Digital Solidaire (IDS) • Relais Cloud sécurisé synchronisé avec le centre physique.
+          Incubateur Digital Solidaire (IDS)
         </p>
       </footer>
     </div>
