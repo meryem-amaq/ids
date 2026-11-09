@@ -1,4 +1,17 @@
 /**
+ * Échappement HTML strict pour prévenir toute injection XSS stockée ou réfléchie (OWASP ASVS V5.3.3)
+ */
+function escapeHtml(value) {
+  if (value === undefined || value === null) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Vue HTML responsive, moderne et ultra-sécurisée pour la validation par email en 1-clic.
  * Zéro dépendance de build (Tailwind CDN), s'adapte parfaitement à mobile et desktop.
  */
@@ -10,6 +23,7 @@ function renderConfirmationPage({
   reservation = null
 }) {
   const isValideAction = action === 'valide';
+  const safeAction = isValideAction ? 'valide' : 'refuse';
   const actionTitle = isValideAction ? 'Validation de la Réservation' : 'Refus de la Réservation';
   const actionColor = isValideAction ? '#10b981' : '#ef4444';
 
@@ -18,8 +32,19 @@ function renderConfirmationPage({
     studio: '🎥 Studio IDS',
     salle_reunion: '🏢 Les Salles'
   };
-  const espaceName = reservation ? (espaceLabels[reservation.espace] || reservation.espace || 'Espace Incubateur') : '';
-  const salleName = reservation?.salle ? ` (${reservation.salle})` : '';
+  const espaceName = reservation ? escapeHtml(espaceLabels[reservation.espace] || reservation.espace || 'Espace Incubateur') : '';
+  const salleName = reservation?.salle ? ` (${escapeHtml(reservation.salle)})` : '';
+  const safeNomComplet = escapeHtml(reservation?.nomComplet || 'Demandeur');
+  const safeNumeroPp = escapeHtml(reservation?.numero_pp || '');
+  const safeDateRes = escapeHtml(reservation?.dateReservation ? String(reservation.dateReservation).split('T')[0] : '—');
+  const safeHeureDebut = escapeHtml(reservation?.heureDebut || '—');
+  const safeHeureFin = escapeHtml(reservation?.heureFin || '—');
+  const safeDecisionPar = escapeHtml(reservation?.decision_par || '');
+  const safeDecisionMotif = escapeHtml(reservation?.decision_motif || '');
+  const safeMotif = escapeHtml(reservation?.motif || '');
+  const safeEquipements = escapeHtml(reservation?.equipementsUtilises || '');
+  const safeErrorMessage = escapeHtml(errorMessage || '');
+  const safeToken = escapeHtml(token || '');
 
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -58,7 +83,7 @@ function renderConfirmationPage({
           </div>
           <h3 class="text-xl font-bold text-slate-900 mb-2">Lien Expiré ou Invalide</h3>
           <p class="text-sm text-slate-600 mb-6 leading-relaxed">
-            ${errorMessage || "Ce lien de confirmation n'est plus valable. Le délai de 48h a peut-être été dépassé ou la réservation a été modifiée."}
+            ${safeErrorMessage || "Ce lien de confirmation n'est plus valable. Le délai de 48h a peut-être été dépassé ou la réservation a été modifiée."}
           </p>
           <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
             Pour toute assistance, connectez-vous directement sur la plateforme IDS ou contactez l'administration.
@@ -72,12 +97,12 @@ function renderConfirmationPage({
           </div>
           <h3 class="text-xl font-bold text-slate-900 mb-2">Réservation Déjà Validée</h3>
           <p class="text-sm text-slate-600 mb-4 leading-relaxed">
-            Cette demande pour <strong>${reservation?.nomComplet || 'l\'incubé'}</strong> a déjà été confirmée avec succès.
+            Cette demande pour <strong>${safeNomComplet}</strong> a déjà été confirmée avec succès.
           </p>
           <div class="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs text-emerald-800 text-left space-y-1">
             <p><strong>Espace :</strong> ${espaceName}${salleName}</p>
-            <p><strong>Date & Heure :</strong> ${reservation?.dateReservation ? String(reservation.dateReservation).split('T')[0] : '—'} (${reservation?.heureDebut} - ${reservation?.heureFin})</p>
-            ${reservation?.decision_par ? `<p><strong>Validé par :</strong> ${reservation.decision_par}</p>` : ''}
+            <p><strong>Date & Heure :</strong> ${safeDateRes} (${safeHeureDebut} - ${safeHeureFin})</p>
+            ${safeDecisionPar ? `<p><strong>Validé par :</strong> ${safeDecisionPar}</p>` : ''}
           </div>
         </div>
       ` : status === 'already_refuse' ? `
@@ -90,9 +115,9 @@ function renderConfirmationPage({
           <p class="text-sm text-slate-600 mb-4 leading-relaxed">
             Cette demande a déjà été marquée comme refusée. Aucune action supplémentaire n'est requise.
           </p>
-          ${reservation?.decision_motif ? `
+          ${safeDecisionMotif ? `
             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 text-left">
-              <strong>Motif indiqué :</strong> ${reservation.decision_motif}
+              <strong>Motif indiqué :</strong> ${safeDecisionMotif}
             </div>
           ` : ''}
         </div>
@@ -119,8 +144,8 @@ function renderConfirmationPage({
             <div class="flex items-start justify-between pb-3 border-b border-slate-200/60">
               <div>
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block">Porteur de Projet</span>
-                <span class="text-sm font-bold text-slate-900">${reservation?.nomComplet || 'Demandeur'}</span>
-                ${reservation?.numero_pp ? `<span class="inline-block ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded font-mono text-[10px] font-bold">${reservation.numero_pp}</span>` : ''}
+                <span class="text-sm font-bold text-slate-900">${safeNomComplet}</span>
+                ${safeNumeroPp ? `<span class="inline-block ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded font-mono text-[10px] font-bold">${safeNumeroPp}</span>` : ''}
               </div>
               <div class="text-right">
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block">Espace Demandé</span>
@@ -133,28 +158,28 @@ function renderConfirmationPage({
             <div class="grid grid-cols-2 gap-3 pb-3 border-b border-slate-200/60">
               <div>
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block">Date Prévue</span>
-                <span class="text-xs font-bold text-slate-800">${reservation?.dateReservation ? String(reservation.dateReservation).split('T')[0] : '—'}</span>
+                <span class="text-xs font-bold text-slate-800">${safeDateRes}</span>
               </div>
               <div>
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block">Créneau Horaire</span>
-                <span class="text-xs font-bold text-slate-800">${reservation?.heureDebut || '—'} → ${reservation?.heureFin || '—'} (${reservation?.dureeMinutes ? Math.round(reservation.dureeMinutes/60) + 'h' : '2h'})</span>
+                <span class="text-xs font-bold text-slate-800">${safeHeureDebut} → ${safeHeureFin} (${reservation?.dureeMinutes ? Math.round(Number(reservation.dureeMinutes)/60) + 'h' : '2h'})</span>
               </div>
             </div>
 
-            ${reservation?.motif ? `
+            ${safeMotif ? `
               <div>
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block mb-0.5">Motif / Contexte</span>
                 <p class="text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200/60 italic">
-                  « ${reservation.motif} »
+                  « ${safeMotif} »
                 </p>
               </div>
             ` : ''}
 
-            ${reservation?.equipementsUtilises ? `
+            ${safeEquipements ? `
               <div>
                 <span class="text-[11px] text-slate-400 font-semibold uppercase block mb-0.5">Matériel Demandé</span>
                 <p class="text-xs text-slate-700 bg-white p-2 rounded-xl border border-slate-200/60">
-                  ${reservation.equipementsUtilises}
+                  ${safeEquipements}
                 </p>
               </div>
             ` : ''}
@@ -162,8 +187,8 @@ function renderConfirmationPage({
 
           <!-- Formulaire d'action -->
           <form id="confirm-form" class="space-y-4">
-            <input type="hidden" id="token" value="${token}" />
-            <input type="hidden" id="action" value="${action}" />
+            <input type="hidden" id="token" value="${safeToken}" />
+            <input type="hidden" id="action" value="${safeAction}" />
 
             ${!isValideAction ? `
               <div>
@@ -273,6 +298,7 @@ function renderConfirmationPage({
 }
 
 module.exports = {
-  renderConfirmationPage
+  renderConfirmationPage,
+  escapeHtml
 };
 

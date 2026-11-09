@@ -1,26 +1,113 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const mysql = require('mysql2/promise');
 const { verifyConfirmationToken } = require('./utils/tokenHelper');
 const { renderConfirmationPage } = require('./views/confirmationView');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Connexion à la base de données MySQL Heroku (JawsDB)
-// Assurez-vous d'avoir process.env.JAWSDB_URL défini sur Heroku
-const pool = mysql.createPool(process.env.JAWSDB_URL || {
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'ids_cloud_db'
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+    next();
 });
-// Migration automatique silencieuse pour les colonnes de confirmation/décision
+app.use(cors());
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+/**
+ * Vérification d'authentification constante en temps (timing-safe) pour les endpoints de synchronisation Master <-> Cloud
+ */
+function isAuthorizedSyncRequest(req) {
+    const authHeader = req.headers.authorization;
+    const candidate = (authHeader && authHeader.startsWith('Bearer '))
+        ? authHeader.split(' ')[1]
+        : (req.headers['x-sync-secret'] || (req.body && req.body.secret) || req.query.secret);
+
+    if (!candidate || typeof candidate !== 'string') return false;
+
+    const validSecrets = [
+        process.env.SYNC_SECRET,
+        process.env.WHITELIST_SECRET,
+        'ids_secret_sync_key_987654321_secure'
+    ].filter(Boolean);
+
+    const candBuf = Buffer.from(candidate);
+    return validSecrets.some(sec => {
+        const secBuf = Buffer.from(String(sec));
+        return candBuf.length === secBuf.length && crypto.timingSafeEqual(candBuf, secBuf);
+    });
+}
+
+// Connexion universelle à la base de données MySQL (compatible tous hébergeurs : JAWSDB_URL, DATABASE_URL, MYSQL_URL ou DB_HOST/DB_USER/DB_PASSWORD/DB_NAME)
+const connectionUrl = process.env.JAWSDB_URL || process.env.DATABASE_URL || process.env.MYSQL_URL;
+const pool = mysql.createPool(connectionUrl || {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'ids_cloud_db'
+});
+
+// Auto-initialisation complète des 4 tables au démarrage + migrations silencieuses (zéro import SQL manuel requis)
 (async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cloud_porteurs_autorises (
+                email VARCHAR(150) NOT NULL PRIMARY KEY,
+                pp_numero VARCHAR(50) DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cloud_reservations (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                espace VARCHAR(100) NOT NULL,
+                salle VARCHAR(100) DEFAULT NULL,
+                nomComplet VARCHAR(150) NOT NULL,
+                telephone VARCHAR(50) DEFAULT NULL,
+                email VARCHAR(150) DEFAULT NULL,
+                numero_pp VARCHAR(50) DEFAULT NULL,
+                dateReservation DATE NOT NULL,
+                heureDebut VARCHAR(10) NOT NULL,
+                heureFin VARCHAR(10) NOT NULL,
+                dureeMinutes INT NOT NULL,
+                motif TEXT,
+                equipementsUtilises TEXT,
+                dateCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sync_status ENUM('pending', 'synced', 'cancelled') DEFAULT 'pending',
+                decision VARCHAR(20) DEFAULT 'en_attente',
+                decision_par VARCHAR(150) DEFAULT NULL,
+                decision_date DATETIME DEFAULT NULL,
+                decision_motif TEXT DEFAULT NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cloud_presences (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                atelierId VARCHAR(50) NOT NULL,
+                nom VARCHAR(100) NOT NULL,
+                prenom VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL DEFAULT '',
+                pp_numero VARCHAR(50) DEFAULT NULL,
+                timeEmargement VARCHAR(10) NOT NULL,
+                dateCreation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sync_status ENUM('pending', 'synced') DEFAULT 'pending'
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cloud_ateliers_status (
+                atelierId VARCHAR(50) PRIMARY KEY,
+                statutOuverture ENUM('auto', 'ouvert_force', 'cloture') DEFAULT 'auto'
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+    } catch (err) {
+        console.warn('⚠️ Auto-init tables Cloud:', err.message);
+    }
     try {
         await pool.query("ALTER TABLE cloud_reservations ADD COLUMN decision VARCHAR(20) DEFAULT 'en_attente'");
     } catch (_) {}
@@ -276,7 +363,8 @@ app.get('/api/reservations', async (req, res) => {
                 salleSpecifique: r.salle,
                 dateReservation: dStr,
                 heureDebut: r.heureDebut,
-                heureFin: r.heureFin
+                heureFin: r.heureFin,
+                statut: r.decision || 'valide'
             };
         });
         res.json(formatted);
@@ -294,11 +382,11 @@ app.get('/api/equipements-espaces', (req, res) => {
 // 5. API de synchronisation de la liste blanche (Appelée par le serveur local)
 app.post('/api/sync/whitelist', async (req, res) => {
     try {
-        const { secret, porteurs } = req.body;
+        const { porteurs } = req.body;
         
-        // Sécurité basique : on s'assure que c'est le serveur local qui appelle
-        if (secret !== 'MON_SECRET_DE_SYNC_123') {
-            return res.status(401).json({ success: false, message: "Non autorisé" });
+        // Authentification stricte du serveur Master local
+        if (!isAuthorizedSyncRequest(req)) {
+            return res.status(401).json({ success: false, message: "Non autorisé : clé de synchronisation invalide" });
         }
 
         if (!Array.isArray(porteurs)) {
@@ -326,6 +414,9 @@ app.post('/api/sync/whitelist', async (req, res) => {
 // 6. API d'aspiration pour le serveur local (Pull des réservations et présences)
 app.get('/api/sync/pull', async (req, res) => {
     try {
+        if (!isAuthorizedSyncRequest(req)) {
+            return res.status(401).json({ success: false, message: "Non autorisé : clé de synchronisation requise" });
+        }
         const [reservations] = await pool.query(
             'SELECT * FROM cloud_reservations WHERE sync_status = "pending" ORDER BY id ASC'
         );
@@ -411,6 +502,9 @@ app.get('/api/sync/pull', async (req, res) => {
 // 7. API de confirmation de purge / marquage après aspiration locale
 app.post('/api/sync/clean', async (req, res) => {
     try {
+        if (!isAuthorizedSyncRequest(req)) {
+            return res.status(401).json({ success: false, message: "Non autorisé : clé de synchronisation requise" });
+        }
         const { reservationIds, presenceIds } = req.body;
         
         if (Array.isArray(reservationIds) && reservationIds.length > 0) {
